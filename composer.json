@@ -1,0 +1,13 @@
+{
+    "require": {
+        "soneso/stellar-php-sdk": "^1.2",
+        "vlucas/phpdotenv": "^5.7",
+        "slim/slim": "^4.15",
+        "slim/psr7": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    }
+}
