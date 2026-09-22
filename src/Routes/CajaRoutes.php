@@ -23,11 +23,20 @@ final class CajaRoutes
                 return self::jsonError($response, 400, 'missing_fields');
             }
 
-            $stmt = Database::connection()->prepare(
-                'INSERT INTO cajas (nombre, curso, public_key, umbral) VALUES (?, ?, ?, ?) RETURNING id'
-            );
-            $stmt->execute([$nombre, $curso, $publicKey, $umbral]);
-            $id = $stmt->fetchColumn();
+            $pdo = Database::connection();
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_crear_caja(?, ?, ?, ?, @id)');
+                $stmt->execute([$nombre, $curso, $publicKey, $umbral]);
+                $stmt->closeCursor();
+                $id = $pdo->query('SELECT @id AS id')->fetch()['id'];
+            } else {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO cajas (nombre, curso, public_key, umbral) VALUES (?, ?, ?, ?)'
+                );
+                $stmt->execute([$nombre, $curso, $publicKey, $umbral]);
+                $id = $pdo->lastInsertId();
+            }
 
             $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
 
@@ -35,17 +44,33 @@ final class CajaRoutes
         });
 
         $app->get('/cajas/{id}', function (Request $request, Response $response, array $args): Response {
-            $stmt = Database::connection()->prepare('SELECT * FROM cajas WHERE id = ?');
-            $stmt->execute([$args['id']]);
-            $caja = $stmt->fetch();
+            $pdo = Database::connection();
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_obtener_caja(?)');
+                $stmt->execute([$args['id']]);
+                $caja = $stmt->fetch();
+                $stmt->closeCursor();
+            } else {
+                $stmt = $pdo->prepare('SELECT * FROM cajas WHERE id = ?');
+                $stmt->execute([$args['id']]);
+                $caja = $stmt->fetch();
+            }
 
             if (!$caja) {
                 return self::jsonError($response, 404, 'caja_not_found');
             }
 
-            $membersStmt = Database::connection()->prepare('SELECT id, nombre, public_key FROM members WHERE caja_id = ?');
-            $membersStmt->execute([$args['id']]);
-            $caja['members'] = $membersStmt->fetchAll();
+            if (self::isMysql()) {
+                $membersStmt = $pdo->prepare('CALL sp_listar_members(?)');
+                $membersStmt->execute([$args['id']]);
+                $caja['members'] = $membersStmt->fetchAll();
+                $membersStmt->closeCursor();
+            } else {
+                $membersStmt = $pdo->prepare('SELECT id, nombre, public_key FROM members WHERE caja_id = ?');
+                $membersStmt->execute([$args['id']]);
+                $caja['members'] = $membersStmt->fetchAll();
+            }
 
             $response->getBody()->write(json_encode(['ok' => true, 'caja' => $caja]));
 
@@ -61,11 +86,20 @@ final class CajaRoutes
                 return self::jsonError($response, 400, 'missing_fields');
             }
 
-            $stmt = Database::connection()->prepare(
-                'INSERT INTO members (caja_id, nombre, public_key) VALUES (?, ?, ?) RETURNING id'
-            );
-            $stmt->execute([$args['id'], $nombre, $publicKey]);
-            $id = $stmt->fetchColumn();
+            $pdo = Database::connection();
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_agregar_member(?, ?, ?, @id)');
+                $stmt->execute([$args['id'], $nombre, $publicKey]);
+                $stmt->closeCursor();
+                $id = $pdo->query('SELECT @id AS id')->fetch()['id'];
+            } else {
+                $stmt = $pdo->prepare(
+                    'INSERT INTO members (caja_id, nombre, public_key) VALUES (?, ?, ?)'
+                );
+                $stmt->execute([$args['id'], $nombre, $publicKey]);
+                $id = $pdo->lastInsertId();
+            }
 
             $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
 
@@ -83,11 +117,20 @@ final class CajaRoutes
                 return self::jsonError($response, 400, 'missing_fields');
             }
 
-            $stmt = Database::connection()->prepare(
-                "INSERT INTO proposals (caja_id, destino, monto, motivo, xdr, estado) VALUES (?, ?, ?, ?, ?, 'pendiente') RETURNING id"
-            );
-            $stmt->execute([$args['id'], $destino, $monto, $motivo, $xdr]);
-            $id = $stmt->fetchColumn();
+            $pdo = Database::connection();
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_crear_proposal(?, ?, ?, ?, ?, @id)');
+                $stmt->execute([$args['id'], $destino, $monto, $motivo, $xdr]);
+                $stmt->closeCursor();
+                $id = $pdo->query('SELECT @id AS id')->fetch()['id'];
+            } else {
+                $stmt = $pdo->prepare(
+                    "INSERT INTO proposals (caja_id, destino, monto, motivo, xdr, estado) VALUES (?, ?, ?, ?, ?, 'pendiente')"
+                );
+                $stmt->execute([$args['id'], $destino, $monto, $motivo, $xdr]);
+                $id = $pdo->lastInsertId();
+            }
 
             $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
 
@@ -95,16 +138,32 @@ final class CajaRoutes
         });
 
         $app->get('/cajas/{id}/proposals', function (Request $request, Response $response, array $args): Response {
-            $stmt = Database::connection()->prepare('SELECT * FROM proposals WHERE caja_id = ? ORDER BY id DESC');
-            $stmt->execute([$args['id']]);
-            $proposals = $stmt->fetchAll();
+            $pdo = Database::connection();
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_listar_proposals(?)');
+                $stmt->execute([$args['id']]);
+                $proposals = $stmt->fetchAll();
+                $stmt->closeCursor();
+            } else {
+                $stmt = $pdo->prepare('SELECT * FROM proposals WHERE caja_id = ? ORDER BY id DESC');
+                $stmt->execute([$args['id']]);
+                $proposals = $stmt->fetchAll();
+            }
 
             foreach ($proposals as &$proposal) {
-                $sigStmt = Database::connection()->prepare(
-                    'SELECT member_id, firmado_en FROM proposal_signatures WHERE proposal_id = ?'
-                );
-                $sigStmt->execute([$proposal['id']]);
-                $proposal['signatures'] = $sigStmt->fetchAll();
+                if (self::isMysql()) {
+                    $sigStmt = $pdo->prepare('CALL sp_listar_signatures(?)');
+                    $sigStmt->execute([$proposal['id']]);
+                    $proposal['signatures'] = $sigStmt->fetchAll();
+                    $sigStmt->closeCursor();
+                } else {
+                    $sigStmt = $pdo->prepare(
+                        'SELECT member_id, firmado_en FROM proposal_signatures WHERE proposal_id = ?'
+                    );
+                    $sigStmt->execute([$proposal['id']]);
+                    $proposal['signatures'] = $sigStmt->fetchAll();
+                }
             }
 
             $response->getBody()->write(json_encode(['ok' => true, 'proposals' => $proposals]));
@@ -123,18 +182,29 @@ final class CajaRoutes
 
             $pdo = Database::connection();
 
-            $update = $pdo->prepare('UPDATE proposals SET xdr = ? WHERE id = ?');
-            $update->execute([$xdr, $args['id']]);
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_firmar_proposal(?, ?, ?)');
+                $stmt->execute([$args['id'], $memberId, $xdr]);
+                $stmt->closeCursor();
+            } else {
+                $update = $pdo->prepare('UPDATE proposals SET xdr = ? WHERE id = ?');
+                $update->execute([$xdr, $args['id']]);
 
-            $insert = $pdo->prepare(
-                'INSERT INTO proposal_signatures (proposal_id, member_id, firmado_en) VALUES (?, ?, NOW())'
-            );
-            $insert->execute([$args['id'], $memberId]);
+                $insert = $pdo->prepare(
+                    'INSERT INTO proposal_signatures (proposal_id, member_id, firmado_en) VALUES (?, ?, CURRENT_TIMESTAMP)'
+                );
+                $insert->execute([$args['id'], $memberId]);
+            }
 
             $response->getBody()->write(json_encode(['ok' => true]));
 
             return $response->withStatus(201);
         });
+    }
+
+    private static function isMysql(): bool
+    {
+        return ($_ENV['DB_DRIVER'] ?? 'pgsql') === 'mysql';
     }
 
     private static function jsonError(Response $response, int $status, string $error): Response
