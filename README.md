@@ -1,6 +1,13 @@
 # stellar-demo
 stellar hackaton 30 septiembre 2026
 
+## Estructura
+
+- `backend/` — API PHP (Slim), Stellar SDK, esquema de base de datos
+  (Postgres/MySQL/SQLite). Ver `backend/README` (este mismo contrato de
+  endpoints aplica) y `backend/Dockerfile` para el deploy.
+- `frontend/` — Angular (Josue). Consume los endpoints documentados abajo.
+
 <img width="854" height="685" alt="image" src="https://github.com/user-attachments/assets/8baf3798-94f2-422e-9ceb-0b6009f81741" />
 
 
