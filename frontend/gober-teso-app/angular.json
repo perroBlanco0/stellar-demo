@@ -30,7 +30,11 @@
             "server": "src/main.server.ts",
             "outputMode": "server",
             "security": {
-              "allowedHosts": []
+              "allowedHosts": [
+                "stellar-demo-frontend.onrender.com",
+                ".byrongonzalez.dev",
+                "localhost"
+              ]
             },
             "ssr": {
               "entry": "src/server.ts"
