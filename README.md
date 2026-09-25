@@ -119,3 +119,11 @@ Response (201):
 
 
 { "ok": true }
+
+POST /proposals/{id}/ejecutar
+Cuando ya se juntaron las firmas necesarias (segun umbral de la caja), toma el XDR final guardado y lo envia de verdad a Stellar. Marca la propuesta como "ejecutada".
+Response (200):
+
+
+{ "ok": true, "hash": "6c14d4bf..." }
+Errores: 404 proposal_not_found, 404 caja_not_found, 409 proposal_already_executed, 409 not_enough_signatures (incluye firmas y umbral), 422 horizon_rejected (con result_codes)
