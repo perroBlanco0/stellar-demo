@@ -1,8 +1,8 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { LoginComponent } from './features/auth/login/login.component';
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [LoginComponent],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',
@@ -10,3 +10,4 @@ import { RouterOutlet } from '@angular/router';
 export class App {
   protected readonly title = signal('gober-teso-app');
 }
+
