@@ -53,6 +53,23 @@ Response (200):
 }
 Error: 404 caja_not_found
 
+GET /cajas/{id}/estado
+Consulta en vivo a Stellar (Horizon) — balance real y ultimas transacciones de la cuenta de la caja. No usa la base de datos para esto (solo lee cajas.public_key).
+Response (200):
+
+
+{
+  "ok": true,
+  "public_key": "GBTC...",
+  "balances": [
+    { "asset": "XLM", "balance": "9999.9998900" }
+  ],
+  "transacciones": [
+    { "tipo": "payment", "creado_en": "2026-09-25T13:43:52Z", "transaction_hash": "9952434a..." }
+  ]
+}
+Error: 404 caja_not_found, 404 account_not_found_on_stellar (la caja existe en la BD pero su public_key todavia no tiene cuenta creada/fondeada en Stellar)
+
 POST /cajas/{id}/members
 Request:
 
