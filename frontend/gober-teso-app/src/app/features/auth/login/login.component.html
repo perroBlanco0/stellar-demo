@@ -1,11 +1,15 @@
-<div class="min-h-screen w-full flex flex-col justify-between items-center px-4 py-6 sm:px-6 lg:px-8 relative bg-[#070c14] text-slate-100 overflow-x-hidden">
-  
+<div
+  class="min-h-screen w-full flex flex-col justify-between items-center px-4 py-6 sm:px-6 lg:px-8 relative bg-[#070c14] text-slate-100 overflow-x-hidden">
+
   <!-- Subtle Background Grid/Atmosphere -->
-  <div class="absolute inset-0 bg-[linear-gradient(to_right,#1f293708_1px,transparent_1px),linear-gradient(to_bottom,#1f293708_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
+  <div
+    class="absolute inset-0 bg-[linear-gradient(to_right,#1f293708_1px,transparent_1px),linear-gradient(to_bottom,#1f293708_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none">
+  </div>
 
   <!-- Top Status Indicator -->
   <header class="w-full flex justify-center pt-2 pb-4 z-10">
-    <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0b161b]/90 border border-emerald-500/30 text-emerald-400 font-mono-code text-[11px] font-semibold tracking-wider uppercase shadow-lg shadow-emerald-950/20 backdrop-blur-md">
+    <div
+      class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0b161b]/90 border border-emerald-500/30 text-emerald-400 font-mono-code text-[11px] font-semibold tracking-wider uppercase shadow-lg shadow-emerald-950/20 backdrop-blur-md">
       <span class="relative flex h-2 w-2">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
         <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -16,55 +20,60 @@
 
   <!-- Notification Banner (if any) -->
   @if (notification()) {
-    <div 
-      class="z-20 mb-4 max-w-[440px] w-full mx-auto px-4 py-3 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between gap-3 shadow-lg transition-all animate-fade-in"
-      [ngClass]="{
+  <div
+    class="z-20 mb-4 max-w-[440px] w-full mx-auto px-4 py-3 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between gap-3 shadow-lg transition-all animate-fade-in"
+    [ngClass]="{
         'bg-emerald-950/80 border border-emerald-500/40 text-emerald-200': notification()?.type === 'success',
         'bg-rose-950/80 border border-rose-500/40 text-rose-200': notification()?.type === 'error',
         'bg-sky-950/80 border border-sky-500/40 text-sky-200': notification()?.type === 'info'
-      }"
-    >
-      <div class="flex items-center gap-2">
-        @if (notification()?.type === 'success') {
-          <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
-        } @else if (notification()?.type === 'error') {
-          <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        } @else {
-          <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        }
-        <span>{{ notification()?.message }}</span>
-      </div>
-      <button type="button" (click)="notification.set(null)" class="text-slate-400 hover:text-white shrink-0">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      }">
+    <div class="flex items-center gap-2">
+      @if (notification()?.type === 'success') {
+      <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      } @else if (notification()?.type === 'error') {
+      <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+      } @else {
+      <svg class="w-4 h-4 text-sky-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      }
+      <span>{{ notification()?.message }}</span>
     </div>
+    <button type="button" (click)="notification.set(null)" class="text-slate-400 hover:text-white shrink-0">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
   }
 
   <!-- Main Login Card -->
-  <main class="w-full max-w-[460px] bg-[#0c1421]/90 border border-slate-800/80 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 relative backdrop-blur-xl z-10 my-auto">
-    
+  <main
+    class="w-full max-w-[460px] bg-[#0c1421]/90 border border-slate-800/80 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/80 relative backdrop-blur-xl z-10 my-auto">
+
     <!-- Top glowing line -->
-    <div class="absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"></div>
+    <div class="absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent">
+    </div>
 
     <!-- Security Shield Icon Badge -->
-    <div class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-[#08201a]/90 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-950/60 group hover:scale-105 transition-transform">
+    <div
+      class="mx-auto mb-4 w-14 h-14 rounded-2xl bg-[#08201a]/90 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-950/60 group hover:scale-105 transition-transform">
       <svg class="w-7 h-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
       </svg>
     </div>
 
     <!-- Title & Subtitle -->
     <div class="text-center mb-6">
       <h1 class="text-2xl sm:text-[26px] font-bold text-white tracking-tight">
-        Bóveda de Gobernanza
+        Caja de Gobernanza
       </h1>
       <p class="text-slate-400 text-xs sm:text-[13px] mt-1.5">
         Ingreso seguro de tesorería y firma multisig
@@ -72,11 +81,8 @@
     </div>
 
     <!-- Primary Action: Connect Stellar Wallet Button -->
-    <button
-      type="button"
-      (click)="openWalletModal()"
-      class="w-full bg-[#2ee59d] hover:bg-[#27d48f] active:bg-[#20bd7d] text-slate-950 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all duration-150 active:scale-[0.99] text-sm sm:text-base cursor-pointer"
-    >
+    <button type="button" (click)="openWalletModal()"
+      class="w-full bg-[#2ee59d] hover:bg-[#27d48f] active:bg-[#20bd7d] text-slate-950 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all duration-150 active:scale-[0.99] text-sm sm:text-base cursor-pointer">
       <!-- Stellar diamond / spark icon -->
       <svg class="w-5 h-5 text-slate-950" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2Z" />
@@ -84,62 +90,35 @@
       <span>Conectar Billetera Stellar</span>
     </button>
 
-    <!-- Compatibility Wallets -->
-    <div class="flex items-center justify-center flex-wrap gap-2 text-xs text-slate-400 mt-3 mb-6">
-      <span class="text-slate-400">Compatibilidad:</span>
-      <button 
-        type="button" 
-        (click)="openWalletModal('Freighter')"
-        class="font-semibold text-slate-200 hover:text-emerald-400 transition-colors cursor-pointer"
-      >
-        Freighter
-      </button>
-      <span class="text-slate-700">·</span>
-      <button 
-        type="button" 
-        (click)="openWalletModal('Albedo')"
-        class="font-semibold text-slate-200 hover:text-emerald-400 transition-colors cursor-pointer"
-      >
-        Albedo
-      </button>
-      <span class="text-slate-700">·</span>
-      <button 
-        type="button" 
-        (click)="openWalletModal('LOBSTR')"
-        class="font-semibold text-slate-200 hover:text-emerald-400 transition-colors cursor-pointer"
-      >
-        LOBSTR
-      </button>
-    </div>
-
     <!-- Section Divider -->
     <div class="relative flex items-center justify-center my-6">
-      <div class="border-t border-slate-800/90 w-full"></div>
-      <span class="bg-[#0c1421] px-3 text-[10px] sm:text-[11px] font-semibold tracking-wider text-slate-400 uppercase shrink-0">
-        O CREDENCIALES INSTITUCIONALES
-      </span>
+      <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-slate-800/80"></div>
+      </div>
+      <div class="relative flex justify-center text-center">
+        <span
+          class="bg-[#0c1421] px-3 text-[10px] sm:text-[11px] font-semibold tracking-wider text-slate-400 text-center uppercase">
+          O CREDENCIALES INSTITUCIONALES
+        </span>
+      </div>
     </div>
 
     <!-- Form: Institutional Credentials -->
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-4">
-      
+
       <!-- Input: ID DIRECTIVA / CORREO OFICIAL -->
       <div>
         <label for="identifier" class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
           ID DIRECTIVA / CORREO OFICIAL
         </label>
         <div class="relative flex items-center">
-          <input
-            id="identifier"
-            type="text"
-            formControlName="identifier"
-            placeholder="tesorero@gobernanza.stellar"
-            class="w-full bg-[#080e18] border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-colors pr-10"
-          />
+          <input id="identifier" type="text" formControlName="identifier" placeholder="tesorero@gobernanza.stellar"
+            class="w-full bg-[#080e18] border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-colors pr-10" />
           <!-- User / ID Badge Icon -->
           <span class="absolute right-3.5 text-slate-500 pointer-events-none">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
           </span>
         </div>
@@ -151,53 +130,48 @@
           <label for="pin" class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
             PIN CRIPTOGRÁFICO / CONTRASEÑA
           </label>
-          <button
-            type="button"
-            (click)="onRecoverPin()"
-            class="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-0.5 cursor-pointer"
-          >
+          <button type="button" (click)="onRecoverPin()"
+            class="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-0.5 cursor-pointer">
             <span>Recuperar</span>
             <span class="text-xs">&gt;</span>
           </button>
         </div>
         <div class="relative flex items-center">
-          <input
-            id="pin"
-            [type]="showPassword() ? 'text' : 'password'"
-            formControlName="pin"
-            placeholder="••••••••••"
-            class="w-full bg-[#080e18] border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 tracking-wider placeholder-slate-400 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-colors pr-10"
-          />
+          <input id="pin" [type]="showPassword() ? 'text' : 'password'" formControlName="pin" placeholder="••••••••••"
+            class="w-full bg-[#080e18] border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 tracking-wider placeholder-slate-400 focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition-colors pr-10" />
           <!-- Password toggle visibility icon button -->
-          <button
-            type="button"
-            (click)="togglePasswordVisibility()"
+          <button type="button" (click)="togglePasswordVisibility()"
             class="absolute right-3.5 text-slate-500 hover:text-slate-300 transition-colors focus:outline-none cursor-pointer"
-            [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Ver contraseña'"
-          >
+            [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Ver contraseña'">
             @if (showPassword()) {
-              <!-- Eye Off -->
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-              </svg>
+            <!-- Eye Off -->
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+            </svg>
             } @else {
-              <!-- Eye Open -->
-              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
+            <!-- Eye Open -->
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
             }
           </button>
         </div>
       </div>
 
       <!-- Hardware Token / Passkey HSM Switch Row -->
-      <div class="bg-[#090f1a] border border-slate-800/80 rounded-xl p-3 sm:p-3.5 flex items-center justify-between transition-colors hover:border-slate-700/60 mt-3">
+      <div
+        class="bg-[#090f1a] border border-slate-800/80 rounded-xl p-3 sm:p-3.5 flex items-center justify-between transition-colors hover:border-slate-700/60 mt-3">
         <div class="flex items-center gap-3">
           <!-- Token / Key Icon Badge -->
-          <div class="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-slate-300 shrink-0">
-            <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+          <div
+            class="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-slate-300 shrink-0">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
           </div>
           <div>
@@ -211,38 +185,31 @@
         </div>
 
         <!-- Custom Switch -->
-        <button
-          type="button"
-          role="switch"
-          [attr.aria-checked]="isPasskeyEnabled()"
-          (click)="togglePasskey()"
+        <button type="button" role="switch" [attr.aria-checked]="isPasskeyEnabled()" (click)="togglePasskey()"
           class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-          [ngClass]="isPasskeyEnabled() ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-700'"
-        >
+          [ngClass]="isPasskeyEnabled() ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-700'">
           <span
             class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-            [ngClass]="isPasskeyEnabled() ? 'translate-x-5' : 'translate-x-0'"
-          ></span>
+            [ngClass]="isPasskeyEnabled() ? 'translate-x-5' : 'translate-x-0'"></span>
         </button>
       </div>
 
       <!-- Action Button: Ingresar a Caja -->
-      <button
-        type="submit"
-        [disabled]="isLoading()"
-        class="w-full mt-5 bg-[#1b2536] hover:bg-[#233146] active:bg-[#162030] text-slate-100 font-semibold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-slate-700/50 hover:border-slate-600 transition-all duration-150 active:scale-[0.99] text-sm shadow-md cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-      >
+      <button type="submit" [disabled]="isLoading()"
+        class="w-full mt-5 bg-[#1b2536] hover:bg-[#233146] active:bg-[#162030] text-slate-100 font-semibold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-slate-700/50 hover:border-slate-600 transition-all duration-150 active:scale-[0.99] text-sm shadow-md cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
         @if (isLoading()) {
-          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <span>Verificando Quórum...</span>
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+          </path>
+        </svg>
+        <span>Verificando Quórum...</span>
         } @else {
-          <span>Ingresar a Caja</span>
-          <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
+        <span>Ingresar a Caja</span>
+        <svg class="w-4 h-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+        </svg>
         }
       </button>
     </form>
@@ -251,8 +218,10 @@
   <!-- Bottom Security Footer -->
   <footer class="w-full text-center py-6 mt-2 z-10 space-y-1.5">
     <div class="inline-flex items-center justify-center gap-2 text-emerald-400 text-xs sm:text-[13px] font-medium">
-      <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+        stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
       </svg>
       <span>Protegido por Stellar Consensus Protocol (SCP) · Firma Multi-Sig</span>
     </div>
@@ -265,64 +234,60 @@
 
   <!-- Modal: Conexión de Billeteras Stellar -->
   @if (showWalletModal()) {
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div class="w-full max-w-md bg-[#0e1624] border border-slate-800 rounded-2xl p-6 shadow-2xl relative">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2Z" />
-              </svg>
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+    <div class="w-full max-w-md bg-[#0e1624] border border-slate-800 rounded-2xl p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2.5">
+          <div
+            class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L14.4 8.6L21 11L14.4 13.4L12 20L9.6 13.4L3 11L9.6 8.6L12 2Z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">Seleccionar Billetera</h3>
+            <p class="text-xs text-slate-400">Conexión criptográfica a red Stellar</p>
+          </div>
+        </div>
+        <button type="button" (click)="closeWalletModal()"
+          class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/60 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-2.5 my-4">
+        @for (wallet of supportedWallets; track wallet.id) {
+        <button type="button" (click)="connectWallet(wallet.name)" [disabled]="isConnectingWallet()"
+          class="w-full flex items-center justify-between p-3.5 rounded-xl bg-[#09101b] hover:bg-[#121c2e] border border-slate-800 hover:border-emerald-500/50 transition-all text-left cursor-pointer group disabled:opacity-50">
+          <div class="flex items-center gap-3">
+            <div
+              class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-slate-200 group-hover:border-emerald-500/40 group-hover:text-emerald-400 transition-colors font-bold text-sm">
+              {{ wallet.name[0] }}
             </div>
             <div>
-              <h3 class="text-base font-bold text-white">Seleccionar Billetera</h3>
-              <p class="text-xs text-slate-400">Conexión criptográfica a red Stellar</p>
+              <div class="text-sm font-semibold text-slate-100 group-hover:text-emerald-300 transition-colors">
+                {{ wallet.name }}
+              </div>
+              <div class="text-xs text-slate-400">
+                {{ wallet.desc }}
+              </div>
             </div>
           </div>
-          <button 
-            type="button"
-            (click)="closeWalletModal()"
-            class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/60 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        }
+      </div>
 
-        <div class="space-y-2.5 my-4">
-          @for (wallet of supportedWallets; track wallet.id) {
-            <button
-              type="button"
-              (click)="connectWallet(wallet.name)"
-              [disabled]="isConnectingWallet()"
-              class="w-full flex items-center justify-between p-3.5 rounded-xl bg-[#09101b] hover:bg-[#121c2e] border border-slate-800 hover:border-emerald-500/50 transition-all text-left cursor-pointer group disabled:opacity-50"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-slate-800/90 border border-slate-700/60 flex items-center justify-center text-slate-200 group-hover:border-emerald-500/40 group-hover:text-emerald-400 transition-colors font-bold text-sm">
-                  {{ wallet.name[0] }}
-                </div>
-                <div>
-                  <div class="text-sm font-semibold text-slate-100 group-hover:text-emerald-300 transition-colors">
-                    {{ wallet.name }}
-                  </div>
-                  <div class="text-xs text-slate-400">
-                    {{ wallet.desc }}
-                  </div>
-                </div>
-              </div>
-              <svg class="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          }
-        </div>
-
-        <div class="text-center text-[11px] text-slate-400 mt-4 border-t border-slate-800/80 pt-3">
-          ¿No tienes una billetera? <span class="text-emerald-400 font-medium">Guía de instalación Freighter</span>
-        </div>
+      <div class="text-center text-[11px] text-slate-400 mt-4 border-t border-slate-800/80 pt-3">
+        ¿No tienes una billetera? <span class="text-emerald-400 font-medium">Guía de instalación Freighter</span>
       </div>
     </div>
+  </div>
   }
 
 </div>
