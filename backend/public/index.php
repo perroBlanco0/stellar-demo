@@ -5,6 +5,7 @@ require __DIR__ . '/../vendor/autoload.php';
 use App\CorsMiddleware;
 use App\Routes\CajaRoutes;
 use App\Routes\FaucetRoutes;
+use App\Routes\StellarRoutes;
 use Dotenv\Dotenv;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -23,6 +24,7 @@ $app->options('/{routes:.+}', function (Request $request, Response $response): R
 
 FaucetRoutes::register($app);
 CajaRoutes::register($app);
+StellarRoutes::register($app);
 
 $app->get('/', function (Request $request, Response $response): Response {
     $response->getBody()->write(json_encode(['ok' => true, 'service' => 'stellarbarrio-backend']));
