@@ -37,6 +37,24 @@ CREATE TABLE IF NOT EXISTS proposal_signatures (
     firmado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Personas que usan la app; un usuario puede ser member de varias cajas.
+CREATE TABLE IF NOT EXISTS usuarios (
+    id SERIAL PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    public_key TEXT NOT NULL UNIQUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Trazabilidad: cada accion relevante queda registrada con su contexto.
+CREATE TABLE IF NOT EXISTS eventos (
+    id SERIAL PRIMARY KEY,
+    caja_id INTEGER REFERENCES cajas(id) ON DELETE CASCADE,
+    tipo TEXT NOT NULL,
+    detalle TEXT,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_members_caja ON members(caja_id);
 CREATE INDEX IF NOT EXISTS idx_proposals_caja ON proposals(caja_id);
 CREATE INDEX IF NOT EXISTS idx_signatures_proposal ON proposal_signatures(proposal_id);
+CREATE INDEX IF NOT EXISTS idx_eventos_caja ON eventos(caja_id);

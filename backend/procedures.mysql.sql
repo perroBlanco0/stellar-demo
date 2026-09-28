@@ -82,4 +82,39 @@ BEGIN
     SELECT member_id, firmado_en FROM proposal_signatures WHERE proposal_id = p_proposal_id;
 END $$
 
+-- ---------- usuarios ----------
+
+CREATE PROCEDURE sp_crear_usuario(
+    IN p_nombre VARCHAR(255),
+    IN p_public_key VARCHAR(64),
+    OUT p_id INT
+)
+BEGIN
+    INSERT INTO usuarios (nombre, public_key)
+    VALUES (p_nombre, p_public_key);
+    SET p_id = LAST_INSERT_ID();
+END $$
+
+CREATE PROCEDURE sp_obtener_usuario(IN p_public_key VARCHAR(64))
+BEGIN
+    SELECT * FROM usuarios WHERE public_key = p_public_key;
+END $$
+
+-- ---------- eventos (trazabilidad) ----------
+
+CREATE PROCEDURE sp_registrar_evento(
+    IN p_caja_id INT,
+    IN p_tipo VARCHAR(64),
+    IN p_detalle TEXT
+)
+BEGIN
+    INSERT INTO eventos (caja_id, tipo, detalle)
+    VALUES (p_caja_id, p_tipo, p_detalle);
+END $$
+
+CREATE PROCEDURE sp_listar_eventos(IN p_caja_id INT)
+BEGIN
+    SELECT * FROM eventos WHERE caja_id = p_caja_id ORDER BY id DESC;
+END $$
+
 DELIMITER ;

@@ -127,3 +127,50 @@ Response (200):
 
 { "ok": true, "hash": "6c14d4bf..." }
 Errores: 404 proposal_not_found, 404 caja_not_found, 409 proposal_already_executed, 409 not_enough_signatures (incluye firmas y umbral), 422 horizon_rejected (con result_codes)
+
+POST /usuarios
+Registra una persona (nombre + clave publica). Si la clave ya existe, devuelve el mismo id con ya_existia: true.
+Request:
+
+
+{ "nombre": "Tomas B.", "public_key": "GASV..." }
+Response (201):
+
+
+{ "ok": true, "id": 1 }
+Error: 400 missing_fields
+
+GET /usuarios/{public_key}
+Response (200):
+
+
+{ "ok": true, "usuario": { "id": 1, "nombre": "Tomas B.", "public_key": "GASV...", "creado_en": "2026-09-28 20:00:00" } }
+Error: 404 usuario_not_found
+
+GET /cajas/{id}/trazabilidad
+Historial de acciones de la caja (caja creada, miembro agregado, propuesta creada/firmada/ejecutada, faucet). detalle viene como objeto JSON ya decodificado.
+Response (200):
+
+
+{
+  "ok": true,
+  "eventos": [
+    {
+      "id": 3,
+      "caja_id": 1,
+      "tipo": "propuesta_firmada",
+      "detalle": { "proposal_id": "1", "member_id": 2 },
+      "creado_en": "2026-09-28 20:05:00"
+    },
+    {
+      "id": 2,
+      "caja_id": 1,
+      "tipo": "propuesta_creada",
+      "detalle": { "proposal_id": "1", "destino": "GDN4...", "monto": "20", "motivo": "Arriendo" },
+      "creado_en": "2026-09-28 20:00:00"
+    }
+  ]
+}
+Error: 404 caja_not_found
+
+Tipos de evento: caja_creada, miembro_agregado, propuesta_creada, propuesta_firmada, propuesta_ejecutada, faucet_pedido, usuario_creado (este ultimo con caja_id null).

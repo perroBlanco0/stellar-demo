@@ -37,6 +37,22 @@ CREATE TABLE IF NOT EXISTS proposal_signatures (
     firmado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    public_key TEXT NOT NULL UNIQUE,
+    creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS eventos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    caja_id INTEGER REFERENCES cajas(id) ON DELETE CASCADE,
+    tipo TEXT NOT NULL,
+    detalle TEXT,
+    creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_members_caja ON members(caja_id);
 CREATE INDEX IF NOT EXISTS idx_proposals_caja ON proposals(caja_id);
 CREATE INDEX IF NOT EXISTS idx_signatures_proposal ON proposal_signatures(proposal_id);
+CREATE INDEX IF NOT EXISTS idx_eventos_caja ON eventos(caja_id);

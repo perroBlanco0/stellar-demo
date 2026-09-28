@@ -3,6 +3,7 @@
 namespace App\Routes;
 
 use App\Database;
+use App\Eventos;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -37,6 +38,13 @@ final class CajaRoutes
                 $stmt->execute([$nombre, $curso, $publicKey, $umbral]);
                 $id = $pdo->lastInsertId();
             }
+
+            Eventos::registrar($pdo, (int) $id, 'caja_creada', [
+                'nombre' => $nombre,
+                'curso' => $curso,
+                'public_key' => $publicKey,
+                'umbral' => $umbral,
+            ]);
 
             $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
 
@@ -101,6 +109,12 @@ final class CajaRoutes
                 $id = $pdo->lastInsertId();
             }
 
+            Eventos::registrar($pdo, (int) $args['id'], 'miembro_agregado', [
+                'member_id' => $id,
+                'nombre' => $nombre,
+                'public_key' => $publicKey,
+            ]);
+
             $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
 
             return $response->withStatus(201);
@@ -131,6 +145,13 @@ final class CajaRoutes
                 $stmt->execute([$args['id'], $destino, $monto, $motivo, $xdr]);
                 $id = $pdo->lastInsertId();
             }
+
+            Eventos::registrar($pdo, (int) $args['id'], 'propuesta_creada', [
+                'proposal_id' => $id,
+                'destino' => $destino,
+                'monto' => $monto,
+                'motivo' => $motivo,
+            ]);
 
             $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
 
@@ -195,6 +216,13 @@ final class CajaRoutes
                 );
                 $insert->execute([$args['id'], $memberId]);
             }
+
+            $stmt = $pdo->prepare('SELECT caja_id FROM proposals WHERE id = ?');
+            $stmt->execute([$args['id']]);
+            Eventos::registrar($pdo, (int) $stmt->fetchColumn(), 'propuesta_firmada', [
+                'proposal_id' => $args['id'],
+                'member_id' => $memberId,
+            ]);
 
             $response->getBody()->write(json_encode(['ok' => true]));
 

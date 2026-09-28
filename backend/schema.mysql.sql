@@ -42,6 +42,23 @@ CREATE TABLE IF NOT EXISTS proposal_signatures (
     FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    public_key VARCHAR(64) NOT NULL UNIQUE,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS eventos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    caja_id INT,
+    tipo VARCHAR(64) NOT NULL,
+    detalle TEXT,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (caja_id) REFERENCES cajas(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE INDEX idx_members_caja ON members(caja_id);
 CREATE INDEX idx_proposals_caja ON proposals(caja_id);
 CREATE INDEX idx_signatures_proposal ON proposal_signatures(proposal_id);
+CREATE INDEX idx_eventos_caja ON eventos(caja_id);

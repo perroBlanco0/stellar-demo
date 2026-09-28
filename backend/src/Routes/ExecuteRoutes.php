@@ -3,6 +3,7 @@
 namespace App\Routes;
 
 use App\Database;
+use App\Eventos;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
@@ -60,6 +61,11 @@ final class ExecuteRoutes
 
                 $update = $pdo->prepare("UPDATE proposals SET estado = 'ejecutada' WHERE id = ?");
                 $update->execute([$args['id']]);
+
+                Eventos::registrar($pdo, (int) $proposal['caja_id'], 'propuesta_ejecutada', [
+                    'proposal_id' => $args['id'],
+                    'hash' => $result->getHash(),
+                ]);
 
                 $response->getBody()->write(json_encode(['ok' => true, 'hash' => $result->getHash()]));
 

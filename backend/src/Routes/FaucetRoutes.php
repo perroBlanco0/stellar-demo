@@ -2,6 +2,8 @@
 
 namespace App\Routes;
 
+use App\Database;
+use App\Eventos;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
@@ -53,6 +55,18 @@ final class FaucetRoutes
                 $transaction->sign($issuerKeyPair, Network::testnet());
 
                 $result = $sdk->submitTransaction($transaction);
+
+                // Vincula el evento a la caja si el destino es una caja registrada.
+                $pdo = Database::connection();
+                $cajaStmt = $pdo->prepare('SELECT id FROM cajas WHERE public_key = ?');
+                $cajaStmt->execute([$destination]);
+                $cajaId = $cajaStmt->fetchColumn() ?: null;
+                Eventos::registrar($pdo, $cajaId === null ? null : (int) $cajaId, 'faucet_pedido', [
+                    'destino' => $destination,
+                    'monto' => $amount,
+                    'hash' => $result->getHash(),
+                ]);
+
                 $response->getBody()->write(json_encode(['ok' => true, 'hash' => $result->getHash()]));
 
                 return $response;
