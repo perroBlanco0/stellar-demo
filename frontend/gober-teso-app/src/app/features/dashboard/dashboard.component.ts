@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
+import { StellarSignModalComponent, DisbursementData, WalletType } from './stellar-sign-modal/stellar-sign-modal.component';
+
 export interface GovernanceRequest {
   id: string;
   orderNumber: string;
@@ -22,7 +24,7 @@ export interface GovernanceRequest {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, StellarSignModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
@@ -179,7 +181,8 @@ export class DashboardComponent {
   }
 
   // Execute cryptographic signature
-  executeSignature(): void {
+  executeSignature(event?: { wallet: WalletType }): void {
+    const walletUsed = event?.wallet ? event.wallet.toUpperCase() : 'FREIGHTER';
     this.isSigning.set(true);
 
     setTimeout(() => {
@@ -209,7 +212,7 @@ export class DashboardComponent {
 
       this.showToast(
         'Firma Criptográfica Estampada',
-        'La transacción de desembolso por $15.000.000 CLP ha alcanzado quórum (3/3) y fue despachada al Ledger Stellar.',
+        `La transacción por $15.000.000 CLP fue firmada vía ${walletUsed}, alcanzó quórum (3/3) y fue despachada al Ledger Stellar.`,
         'success'
       );
     }, 1800);

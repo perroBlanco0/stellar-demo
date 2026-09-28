@@ -481,93 +481,25 @@
     </div>
   </footer>
 
-  <!-- MODAL: FIRMAR DESEMBOLSO -->
-  @if (showSignModal()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-    <div class="w-full max-w-lg bg-[#0c1626] border border-slate-700/90 rounded-2xl p-6 shadow-2xl relative">
-      
-      <!-- Close Button -->
-      <button (click)="closeSignModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-
-      <!-- Modal Title -->
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-white">Estampar Firma Criptográfica</h3>
-          <p class="text-xs text-slate-400">Autorización multisig de desembolso institucional</p>
-        </div>
-      </div>
-
-      <!-- Detail Box -->
-      <div class="bg-[#09111c] border border-slate-800 rounded-xl p-4 mb-5 space-y-3 font-mono text-xs">
-        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-          <span class="text-slate-400">Orden de Retiro:</span>
-          <span class="text-white font-bold">#ORD-2025-089</span>
-        </div>
-        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-          <span class="text-slate-400">Concepto:</span>
-          <span class="text-slate-200">Anticipo Escenario y Sonido</span>
-        </div>
-        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-          <span class="text-slate-400">Monto CLP:</span>
-          <span class="text-emerald-400 font-bold text-sm">$15.000.000 CLP</span>
-        </div>
-        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-          <span class="text-slate-400">Equivalente XLM:</span>
-          <span class="text-slate-300">900.00 XLM</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-slate-400">Firmante:</span>
-          <span class="text-emerald-300 font-semibold">Valeria Méndez (Tesorera Titular)</span>
-        </div>
-      </div>
-
-      <!-- Soroban Contract Hash pill -->
-      <div class="p-3 bg-slate-900/60 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-400 mb-6 flex items-center justify-between">
-        <span>Contrato Soroban:</span>
-        <span class="text-slate-300">CA78...90FE (SEP-20 Quórum 3/3)</span>
-      </div>
-
-      <!-- Modal Actions -->
-      <div class="flex items-center gap-3 justify-end">
-        <button 
-          type="button" 
-          (click)="closeSignModal()" 
-          [disabled]="isSigning()"
-          class="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800/60 text-xs font-semibold transition-all">
-          Cancelar
-        </button>
-        <button 
-          type="button" 
-          (click)="executeSignature()" 
-          [disabled]="isSigning()"
-          class="px-5 py-2.5 rounded-xl bg-[#2ee59d] hover:bg-[#27d48f] text-slate-950 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
-          @if (isSigning()) {
-          <svg class="animate-spin -ml-1 mr-1 h-4 w-4 text-slate-950" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <span>Firmando con Llave Ed25519...</span>
-          } @else {
-          <svg class="w-4 h-4 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-          <span>Confirmar y Estampar Firma</span>
-          }
-        </button>
-      </div>
-
-    </div>
-  </div>
-  }
+  <!-- MODAL: FIRMAR AUTORIZACIÓN EN STELLAR (MULTI-SIG) -->
+  <app-stellar-sign-modal
+    [isOpen]="showSignModal()"
+    [data]="{
+      amountClp: 15000000,
+      amountUsdc: 900.00,
+      amountXlm: 7420.30,
+      concept: 'Anticipo Sonido y Escenario - Semana Cultural',
+      category: 'Semana Cultural',
+      destinationAccount: 'GA5J...7PK4',
+      sourceVaultAccount: formattedVaultAddress(),
+      orderNumber: '#ORD-2025-089',
+      requiredSignatures: 3,
+      currentSignatures: 1
+    }"
+    (close)="closeSignModal()"
+    (rejected)="closeSignModal()"
+    (signConfirmed)="executeSignature($event)">
+  </app-stellar-sign-modal>
 
   <!-- MODAL: SOLICITAR 3 FIRMAS -->
   @if (showRequestModal()) {
