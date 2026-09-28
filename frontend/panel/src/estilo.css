@@ -167,6 +167,11 @@ body {
 .texto-error { color: #d70015; font-size: 14px; }
 .texto-ok { color: #248a3d; font-size: 14px; }
 .texto-aviso { color: #b25000; font-size: 14px; }
+.texto-secundario { color: var(--texto-2); font-size: 13px; }
+
+.lista-simple { list-style: none; margin: 0; padding: 0; }
+.lista-simple li { padding: 8px 0; border-bottom: 1px solid var(--borde); font-size: 14px; }
+.lista-simple li:last-child { border-bottom: 0; }
 
 .aviso-despertar {
   background: var(--acento-suave);

@@ -6,6 +6,7 @@ DELIMITER $$
 -- ---------- cajas ----------
 
 CREATE PROCEDURE sp_crear_caja(
+    IN p_organizacion_id INT,
     IN p_nombre VARCHAR(255),
     IN p_curso VARCHAR(255),
     IN p_public_key VARCHAR(64),
@@ -13,8 +14,8 @@ CREATE PROCEDURE sp_crear_caja(
     OUT p_id INT
 )
 BEGIN
-    INSERT INTO cajas (nombre, curso, public_key, umbral)
-    VALUES (p_nombre, p_curso, p_public_key, p_umbral);
+    INSERT INTO cajas (organizacion_id, nombre, curso, public_key, umbral)
+    VALUES (p_organizacion_id, p_nombre, p_curso, p_public_key, p_umbral);
     SET p_id = LAST_INSERT_ID();
 END $$
 
@@ -98,6 +99,59 @@ END $$
 CREATE PROCEDURE sp_obtener_usuario(IN p_public_key VARCHAR(64))
 BEGIN
     SELECT * FROM usuarios WHERE public_key = p_public_key;
+END $$
+
+-- ---------- organizaciones / admins / sesiones ----------
+
+CREATE PROCEDURE sp_crear_organizacion(
+    IN p_nombre VARCHAR(255),
+    OUT p_id INT
+)
+BEGIN
+    INSERT INTO organizaciones (nombre)
+    VALUES (p_nombre);
+    SET p_id = LAST_INSERT_ID();
+END $$
+
+CREATE PROCEDURE sp_crear_admin_user(
+    IN p_organizacion_id INT,
+    IN p_email VARCHAR(255),
+    IN p_password_hash VARCHAR(255),
+    OUT p_id INT
+)
+BEGIN
+    INSERT INTO admin_users (organizacion_id, email, password_hash)
+    VALUES (p_organizacion_id, p_email, p_password_hash);
+    SET p_id = LAST_INSERT_ID();
+END $$
+
+CREATE PROCEDURE sp_listar_admins(IN p_organizacion_id INT)
+BEGIN
+    SELECT id, organizacion_id, email, creado_en
+    FROM admin_users WHERE organizacion_id = p_organizacion_id;
+END $$
+
+CREATE PROCEDURE sp_obtener_admin_por_email(IN p_email VARCHAR(255))
+BEGIN
+    SELECT * FROM admin_users WHERE email = p_email;
+END $$
+
+CREATE PROCEDURE sp_crear_sesion(
+    IN p_admin_user_id INT,
+    IN p_token VARCHAR(128),
+    IN p_expira_en TIMESTAMP
+)
+BEGIN
+    INSERT INTO admin_sessions (admin_user_id, token, expira_en)
+    VALUES (p_admin_user_id, p_token, p_expira_en);
+END $$
+
+CREATE PROCEDURE sp_obtener_sesion_por_token(IN p_token VARCHAR(128))
+BEGIN
+    SELECT au.id, au.email, au.organizacion_id
+    FROM admin_sessions s
+    JOIN admin_users au ON au.id = s.admin_user_id
+    WHERE s.token = p_token AND s.expira_en > CURRENT_TIMESTAMP;
 END $$
 
 -- ---------- eventos (trazabilidad) ----------

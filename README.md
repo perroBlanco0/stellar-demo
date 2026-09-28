@@ -23,6 +23,7 @@ Response (200):
 Errores: 400 missing_destination, 400 invalid_destination, 500 issuer_not_configured, 422 horizon_rejected (con result_codes.transaction y result_codes.operations)
 
 POST /cajas
+Requiere login de administrador: header `Authorization: Bearer <token>` (el token sale de POST /auth/login). La caja queda asociada a la organizacion del admin (campo organizacion_id en la respuesta de GET /cajas/{id}).
 Request:
 
 
@@ -31,7 +32,7 @@ Response (201):
 
 
 { "ok": true, "id": 1 }
-Error: 400 missing_fields
+Errores: 400 missing_fields, 401 unauthorized
 
 GET /cajas/{id}
 Response (200):
@@ -173,4 +174,52 @@ Response (200):
 }
 Error: 404 caja_not_found
 
-Tipos de evento: caja_creada, miembro_agregado, propuesta_creada, propuesta_firmada, propuesta_ejecutada, faucet_pedido, usuario_creado (este ultimo con caja_id null).
+Tipos de evento: caja_creada, miembro_agregado, propuesta_creada, propuesta_firmada, propuesta_ejecutada, faucet_pedido, usuario_creado, organizacion_creada, admin_creado (los ultimos con caja_id null).
+
+POST /auth/login
+Request:
+
+
+{ "email": "admin@curso.cl", "password": "secreto123" }
+Response (200):
+
+
+{ "ok": true, "token": "97f0dbe9...", "email": "admin@curso.cl", "organizacion_id": 1 }
+Errores: 400 missing_fields, 401 credenciales_invalidas
+El token se manda en las rutas protegidas como `Authorization: Bearer <token>`. Dura 7 dias.
+
+POST /organizaciones
+Crea la organizacion y su primer admin de una vez (bootstrap abierto: cualquiera puede registrar una organizacion nueva).
+Request:
+
+
+{ "nombre": "Curso 4to Medio B", "email": "admin@curso.cl", "password": "secreto123" }
+Response (201):
+
+
+{ "ok": true, "id": 1, "admin_id": 1 }
+Errores: 400 missing_fields, 409 email_ya_registrado
+
+POST /organizaciones/{id}/admins
+Agrega un admin a la organizacion. Requiere Bearer token de un admin DE ESA organizacion.
+Request:
+
+
+{ "email": "segundo@curso.cl", "password": "otro12345" }
+Response (201):
+
+
+{ "ok": true, "id": 2 }
+Errores: 400 missing_fields, 401 unauthorized, 403 forbidden (token de otra organizacion), 409 email_ya_registrado
+
+GET /organizaciones/{id}/admins
+Requiere Bearer token de un admin de esa organizacion.
+Response (200):
+
+
+{ "ok": true, "admins": [ { "id": 1, "organizacion_id": 1, "email": "admin@curso.cl", "creado_en": "2026-09-28 20:49:32" } ] }
+Errores: 401 unauthorized, 403 forbidden
+
+Que requiere login y que no:
+- CON login (Bearer token): POST /cajas, POST /organizaciones/{id}/admins, GET /organizaciones/{id}/admins.
+- SIN login (no rompe el flujo del miembro que aprueba gastos): GET /cajas/{id}, GET /cajas/{id}/estado, GET /cajas/{id}/proposals, GET /cajas/{id}/trazabilidad, POST /cajas/{id}/members, POST /cajas/{id}/proposals, POST /proposals/{id}/signatures, POST /proposals/{id}/ejecutar, POST /faucet, POST /usuarios, GET /usuarios/{public_key}, POST /organizaciones, POST /auth/login.

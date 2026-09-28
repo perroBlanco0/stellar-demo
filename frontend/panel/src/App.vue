@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { despertar } from './api';
 import Inicio from './Inicio.vue';
 import Caja from './Caja.vue';
+import Admin from './Admin.vue';
 
 // Ruteo mínimo por hash: #/ -> inicio, #/caja/ID -> detalle. Sin vue-router.
 const vista = ref('inicio');
@@ -14,6 +15,8 @@ function parsearHash() {
   if (m) {
     cajaId.value = Number(m[1]);
     vista.value = 'caja';
+  } else if (location.hash.startsWith('#/admin')) {
+    vista.value = 'admin';
   } else {
     vista.value = 'inicio';
   }
@@ -33,5 +36,6 @@ onMounted(() => {
     Conectando con el servicio&hellip; la primera carga puede tardar ~1 minuto.
   </div>
   <Inicio v-if="vista === 'inicio'" :despertando="despertando" />
+  <Admin v-else-if="vista === 'admin'" />
   <Caja v-else :id="cajaId" :key="cajaId" :despertando="despertando" />
 </template>

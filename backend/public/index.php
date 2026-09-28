@@ -4,6 +4,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use App\CorsMiddleware;
 use App\Database;
+use App\Routes\AdminRoutes;
 use App\Routes\CajaRoutes;
 use App\Routes\ExecuteRoutes;
 use App\Routes\FaucetRoutes;
@@ -27,7 +28,18 @@ $app->add(new CorsMiddleware());
 $driver = $_ENV['DB_DRIVER'] ?? 'pgsql';
 if ($driver !== 'mysql') {
     $schema = $driver === 'sqlite' ? 'schema.sqlite.sql' : 'schema.sql';
-    Database::connection()->exec(file_get_contents(__DIR__ . '/../' . $schema));
+    $pdo = Database::connection();
+    $pdo->exec(file_get_contents(__DIR__ . '/../' . $schema));
+
+    // SQLite no acepta ADD COLUMN IF NOT EXISTS: migrar cajas a mano.
+    // Postgres ya lleva su propio ALTER idempotente dentro de schema.sql.
+    if ($driver === 'sqlite') {
+        try {
+            $pdo->exec('ALTER TABLE cajas ADD COLUMN organizacion_id INTEGER REFERENCES organizaciones(id)');
+        } catch (\PDOException $e) {
+            // La columna ya existe.
+        }
+    }
 }
 
 // Preflight CORS para todas las rutas.
@@ -41,6 +53,7 @@ StellarRoutes::register($app);
 ExecuteRoutes::register($app);
 UsuarioRoutes::register($app);
 TrazabilidadRoutes::register($app);
+AdminRoutes::register($app);
 
 $app->get('/', function (Request $request, Response $response): Response {
     $response->getBody()->write(json_encode(['ok' => true, 'service' => 'stellarbarrio-backend']));

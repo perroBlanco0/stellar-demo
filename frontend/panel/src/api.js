@@ -4,10 +4,17 @@
 const API = import.meta.env.DEV ? '/api' : 'https://stellar-demo-backend.onrender.com';
 
 async function req(metodo, ruta, cuerpo) {
+  const headers = {};
+  if (cuerpo) headers['Content-Type'] = 'application/json';
+
+  // Si hay sesión de administrador, todas las llamadas la llevan.
+  const token = localStorage.getItem('admin_token');
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
   try {
     const res = await fetch(API + ruta, {
       method: metodo,
-      headers: cuerpo ? { 'Content-Type': 'application/json' } : {},
+      headers,
       body: cuerpo ? JSON.stringify(cuerpo) : undefined,
     });
     const datos = await res.json().catch(() => ({}));
@@ -32,3 +39,12 @@ export const firmarPropuesta = (propuestaId, memberId, xdr) =>
 export const ejecutarPropuesta = (propuestaId) =>
   req('POST', `/proposals/${propuestaId}/ejecutar`, {});
 export const pedirFondos = (destino) => req('POST', '/faucet', { destination: destino });
+
+// Administración de organizaciones (la creación de cajas ya va con token
+// porque req() lo adjunta solo cuando existe en localStorage).
+export const entrarAdmin = (email, password) => req('POST', '/auth/login', { email, password });
+export const crearOrganizacion = (nombre, email, password) =>
+  req('POST', '/organizaciones', { nombre, email, password });
+export const agregarAdmin = (orgId, email, password) =>
+  req('POST', `/organizaciones/${orgId}/admins`, { email, password });
+export const listarAdmins = (orgId) => req('GET', `/organizaciones/${orgId}/admins`);

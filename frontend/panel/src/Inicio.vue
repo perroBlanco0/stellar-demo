@@ -54,7 +54,11 @@ async function crear() {
     const claves = generarClaves();
     const r = await crearCaja(nombre.value.trim(), curso.value.trim(), claves.publica, umbral.value);
     if (!r.datos.ok) {
-      error.value = 'No se pudo crear la caja (' + (r.datos.error || 'error') + ').';
+      if (r.estado === 401) {
+        error.value = 'Para crear cajas hay que entrar como administrador. Ve a Administración.';
+      } else {
+        error.value = 'No se pudo crear la caja (' + (r.datos.error || 'error') + ').';
+      }
       return;
     }
     const id = r.datos.id;
@@ -143,5 +147,9 @@ function copiar(texto) {
     </div>
 
     <p v-if="error" class="texto-error mt-3">{{ error }}</p>
+
+    <p class="mt-4 mb-0">
+      <a href="#/admin" class="texto-secundario">Administraci&oacute;n de organizaciones</a>
+    </p>
   </div>
 </template>

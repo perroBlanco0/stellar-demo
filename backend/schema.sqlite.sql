@@ -2,8 +2,30 @@
 -- Misma forma de datos, sintaxis adaptada (AUTOINCREMENT en vez de SERIAL,
 -- TEXT con default CURRENT_TIMESTAMP en vez de TIMESTAMPTZ).
 
+CREATE TABLE IF NOT EXISTS organizaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organizacion_id INTEGER NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    admin_user_id INTEGER NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    expira_en TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS cajas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organizacion_id INTEGER REFERENCES organizaciones(id),
     nombre TEXT NOT NULL,
     curso TEXT,
     public_key TEXT NOT NULL,
@@ -56,3 +78,5 @@ CREATE INDEX IF NOT EXISTS idx_members_caja ON members(caja_id);
 CREATE INDEX IF NOT EXISTS idx_proposals_caja ON proposals(caja_id);
 CREATE INDEX IF NOT EXISTS idx_signatures_proposal ON proposal_signatures(proposal_id);
 CREATE INDEX IF NOT EXISTS idx_eventos_caja ON eventos(caja_id);
+CREATE INDEX IF NOT EXISTS idx_admin_users_org ON admin_users(organizacion_id);
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);

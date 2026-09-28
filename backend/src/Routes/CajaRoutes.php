@@ -2,6 +2,7 @@
 
 namespace App\Routes;
 
+use App\Auth;
 use App\Database;
 use App\Eventos;
 use PDO;
@@ -26,20 +27,28 @@ final class CajaRoutes
 
             $pdo = Database::connection();
 
+            // Crear cajas exige login: quedan asociadas a su organizacion.
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            $organizacionId = (int) $admin['organizacion_id'];
+
             if (self::isMysql()) {
-                $stmt = $pdo->prepare('CALL sp_crear_caja(?, ?, ?, ?, @id)');
-                $stmt->execute([$nombre, $curso, $publicKey, $umbral]);
+                $stmt = $pdo->prepare('CALL sp_crear_caja(?, ?, ?, ?, ?, @id)');
+                $stmt->execute([$organizacionId, $nombre, $curso, $publicKey, $umbral]);
                 $stmt->closeCursor();
                 $id = $pdo->query('SELECT @id AS id')->fetch()['id'];
             } else {
                 $stmt = $pdo->prepare(
-                    'INSERT INTO cajas (nombre, curso, public_key, umbral) VALUES (?, ?, ?, ?)'
+                    'INSERT INTO cajas (organizacion_id, nombre, curso, public_key, umbral) VALUES (?, ?, ?, ?, ?)'
                 );
-                $stmt->execute([$nombre, $curso, $publicKey, $umbral]);
+                $stmt->execute([$organizacionId, $nombre, $curso, $publicKey, $umbral]);
                 $id = $pdo->lastInsertId();
             }
 
             Eventos::registrar($pdo, (int) $id, 'caja_creada', [
+                'organizacion_id' => $organizacionId,
                 'nombre' => $nombre,
                 'curso' => $curso,
                 'public_key' => $publicKey,

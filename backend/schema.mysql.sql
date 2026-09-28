@@ -3,13 +3,38 @@
 -- TIMESTAMP DEFAULT CURRENT_TIMESTAMP en vez de TIMESTAMPTZ/NOW(), InnoDB
 -- para que las FOREIGN KEY (ON DELETE CASCADE) funcionen.
 
+CREATE TABLE IF NOT EXISTS organizaciones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    organizacion_id INT NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS admin_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_user_id INT NOT NULL,
+    token VARCHAR(128) NOT NULL UNIQUE,
+    expira_en TIMESTAMP NOT NULL,
+    FOREIGN KEY (admin_user_id) REFERENCES admin_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS cajas (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    organizacion_id INT,
     nombre VARCHAR(255) NOT NULL,
     curso VARCHAR(255),
     public_key VARCHAR(64) NOT NULL,
     umbral INT NOT NULL,
-    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS members (
@@ -62,3 +87,8 @@ CREATE INDEX idx_members_caja ON members(caja_id);
 CREATE INDEX idx_proposals_caja ON proposals(caja_id);
 CREATE INDEX idx_signatures_proposal ON proposal_signatures(proposal_id);
 CREATE INDEX idx_eventos_caja ON eventos(caja_id);
+CREATE INDEX idx_admin_users_org ON admin_users(organizacion_id);
+CREATE INDEX idx_admin_sessions_token ON admin_sessions(token);
+
+-- Migracion para BD existentes (correr una vez si cajas ya existe sin la columna):
+-- ALTER TABLE cajas ADD COLUMN organizacion_id INT, ADD FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id);
