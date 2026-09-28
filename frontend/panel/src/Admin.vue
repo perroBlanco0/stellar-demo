@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { entrarAdmin, crearOrganizacion, agregarAdmin, listarAdmins } from './api';
+import { confirmar, listo, falla, avisar } from './avisos';
 
 // Sección de administración: distinta del flujo de aprobación de gastos.
 // Aquí entra quien administra una organización (crea cajas, agrega admins),
@@ -11,8 +12,6 @@ const password = ref('');
 const sesion = ref(null); // { token, email, organizacion_id }
 const admins = ref([]);
 const cargando = ref(false);
-const error = ref('');
-const aviso = ref('');
 
 // Crear organización (abierto: es el bootstrap, crea org + primer admin).
 const orgNombre = ref('');
@@ -37,11 +36,12 @@ function guardarSesion(datos) {
   cargarSesion();
 }
 
-function salir() {
+async function salir() {
+  const quiere = await confirmar('¿Salir?', 'Se cierra la sesión de administrador.');
+  if (!quiere) return;
   localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_sesion');
-  cargarSesion();
-  admins.value = [];
+  location.reload();
 }
 
 async function cargarAdmins() {
@@ -50,8 +50,10 @@ async function cargarAdmins() {
   if (r.datos.ok) {
     admins.value = r.datos.admins;
   } else if (r.estado === 401 || r.estado === 403) {
-    salir();
-    error.value = 'La sesión venció. Entra de nuevo.';
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_sesion');
+    cargarSesion();
+    avisar('Sesión vencida', 'Entra de nuevo.');
   }
 }
 
@@ -68,32 +70,40 @@ function textoError(codigo) {
 }
 
 async function entrar() {
-  error.value = '';
   cargando.value = true;
   try {
     const r = await entrarAdmin(email.value.trim(), password.value);
     if (!r.datos.ok) {
-      error.value = textoError(r.datos.error);
+      falla('No se pudo entrar', textoError(r.datos.error));
       return;
     }
     guardarSesion(r.datos);
-    cargarAdmins();
+    await listo('Sesión iniciada', 'Ya puedes administrar tu organización.');
   } finally {
     cargando.value = false;
   }
 }
 
 async function crearOrg() {
-  error.value = '';
-  aviso.value = '';
+  if (!orgNombre.value.trim() || !orgEmail.value.trim() || !orgPassword.value) {
+    avisar('Faltan datos', 'Completa nombre, correo y contraseña.');
+    return;
+  }
+  const quiere = await confirmar('¿Crear la organización?', orgNombre.value.trim());
+  if (!quiere) return;
   cargando.value = true;
   try {
     const r = await crearOrganizacion(orgNombre.value.trim(), orgEmail.value.trim(), orgPassword.value);
     if (!r.datos.ok) {
-      error.value = textoError(r.datos.error);
+      falla('No se pudo', textoError(r.datos.error));
       return;
     }
-    aviso.value = 'Organización "' + orgNombre.value.trim() + '" creada. Entra con ' + orgEmail.value.trim() + '.';
+    // Sin recargar: dejamos el correo listo en el formulario de entrada.
+    await listo(
+      'Organización creada',
+      'Entra con <strong>' + orgEmail.value.trim() + '</strong> para administrarla.',
+      false
+    );
     email.value = orgEmail.value.trim();
     orgNombre.value = '';
     orgEmail.value = '';
@@ -104,19 +114,22 @@ async function crearOrg() {
 }
 
 async function agregar() {
-  error.value = '';
-  aviso.value = '';
+  if (!nuevoEmail.value.trim() || !nuevoPassword.value) {
+    avisar('Faltan datos', 'Completa correo y contraseña.');
+    return;
+  }
+  const quiere = await confirmar('¿Agregar administrador?', nuevoEmail.value.trim());
+  if (!quiere) return;
   cargando.value = true;
   try {
     const r = await agregarAdmin(sesion.value.organizacion_id, nuevoEmail.value.trim(), nuevoPassword.value);
     if (!r.datos.ok) {
-      error.value = textoError(r.datos.error);
+      falla('No se pudo', textoError(r.datos.error));
       return;
     }
-    aviso.value = 'Administrador ' + nuevoEmail.value.trim() + ' agregado.';
     nuevoEmail.value = '';
     nuevoPassword.value = '';
-    cargarAdmins();
+    await listo('Administrador agregado', 'Ya puede entrar con su correo.');
   } finally {
     cargando.value = false;
   }
@@ -215,7 +228,5 @@ onMounted(() => {
       </div>
     </template>
 
-    <p v-if="aviso" class="texto-ok mt-3">{{ aviso }}</p>
-    <p v-if="error" class="texto-error mt-3">{{ error }}</p>
   </div>
 </template>

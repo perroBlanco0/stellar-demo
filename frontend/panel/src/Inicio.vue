@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { crearCaja } from './api';
 import { generarClaves, activarCuenta, prepararCaja } from './stellar';
+import { confirmar, avisar, falla } from './avisos';
 
 const props = defineProps({ despertando: Boolean });
 
@@ -21,10 +22,9 @@ function irACaja(id) {
 function abrir() {
   const id = parseInt(idAbrir.value, 10);
   if (!id || id < 1) {
-    error.value = 'Ingresa un número de caja válido.';
+    avisar('Número inválido', 'Ingresa un número de caja válido.');
     return;
   }
-  error.value = '';
   irACaja(id);
 }
 
@@ -42,22 +42,27 @@ async function crear() {
   error.value = '';
   aviso.value = '';
   if (!nombre.value.trim()) {
-    error.value = 'Ponle un nombre a la caja.';
+    avisar('Falta el nombre', 'Ponle un nombre a la caja.');
     return;
   }
   if (!umbral.value || umbral.value < 1) {
-    error.value = 'Las aprobaciones requeridas deben ser al menos 1.';
+    avisar('Revisa el número', 'Las aprobaciones requeridas deben ser al menos 1.');
     return;
   }
+  const quiere = await confirmar(
+    '¿Crear la caja?',
+    nombre.value.trim() + ' · ' + umbral.value + (umbral.value === 1 ? ' aprobación' : ' aprobaciones') + ' por gasto.'
+  );
+  if (!quiere) return;
   creando.value = true;
   try {
     const claves = generarClaves();
     const r = await crearCaja(nombre.value.trim(), curso.value.trim(), claves.publica, umbral.value);
     if (!r.datos.ok) {
       if (r.estado === 401) {
-        error.value = 'Para crear cajas hay que entrar como administrador. Ve a Administración.';
+        avisar('Falta entrar', 'Para crear cajas hay que entrar como administrador. Ve a Administración.');
       } else {
-        error.value = 'No se pudo crear la caja (' + (r.datos.error || 'error') + ').';
+        falla('No se pudo crear', 'No se pudo crear la caja (' + (r.datos.error || 'error') + ').');
       }
       return;
     }

@@ -9,6 +9,7 @@ import {
   construirXdrPago, firmarXdr, activosDeCuenta,
   clavePublicaValida, claveSecretaValida,
 } from './stellar';
+import { confirmar, listo, falla, avisar } from './avisos';
 
 const props = defineProps({ id: Number, despertando: Boolean });
 
@@ -19,7 +20,6 @@ const propuestas = ref([]);
 const activos = ref([]);         // activos reales de la cuenta (con emisor)
 const cargando = ref(true);
 const error = ref('');
-const aviso = ref('');
 
 // formularios
 const nuevoMiembro = ref({ nombre: '', publica: '', secretaGenerada: '', claveCaja: '' });
@@ -119,40 +119,41 @@ async function cargarTodo() {
 
 // Activación manual (cuando la caja existe pero aún no tiene cuenta en la red).
 async function activar() {
+  const quiere = await confirmar('¿Activar la caja?', 'La caja se fondea y queda lista para operar.');
+  if (!quiere) return;
   ocupado.value = true;
-  aviso.value = '';
   try {
     if (!(await activarCuenta(caja.value.public_key))) {
-      error.value = 'No se pudo activar la caja. Reintenta en un momento.';
+      falla('No se pudo activar', 'No se pudo activar la caja. Reintenta en un momento.');
       return;
     }
     const secreta = claveMaestra();
+    let detalle = '';
     if (secreta) {
       try {
         await prepararCaja(caja.value.public_key, secreta, caja.value.umbral);
       } catch (e) {
-        aviso.value = 'Caja activada, pero su configuración de aprobaciones quedó pendiente.';
+        detalle = 'Su configuración de aprobaciones quedó pendiente.';
       }
     } else {
-      aviso.value =
-        'Caja activada. Ojo: sin la clave maestra no se pueden inscribir aprobadores en la red.';
+      detalle = 'Ojo: sin la clave maestra no se pueden inscribir aprobadores en la red.';
     }
-    await cargarTodo();
+    await listo('Caja activada', detalle || undefined);
   } finally {
     ocupado.value = false;
   }
 }
 
 async function fondos() {
+  const quiere = await confirmar('¿Pedir fondos de prueba?', 'Se enviará saldo de prueba a esta caja.');
+  if (!quiere) return;
   ocupado.value = true;
-  aviso.value = '';
   try {
     const r = await pedirFondos(caja.value.public_key);
     if (r.datos.ok) {
-      aviso.value = 'Fondos de prueba enviados a la caja.';
-      await cargarTodo();
+      await listo('Fondos enviados', 'Los fondos de prueba ya van en camino a la caja.');
     } else {
-      error.value = textoError(r.datos);
+      falla('No se pudo', textoError(r.datos));
     }
   } finally {
     ocupado.value = false;
@@ -170,31 +171,42 @@ async function agregar() {
   error.value = '';
   const m = nuevoMiembro.value;
   if (!m.nombre.trim() || !clavePublicaValida(m.publica)) {
-    error.value = 'El miembro necesita nombre y una clave pública válida.';
+    avisar('Revisa los datos', 'El miembro necesita nombre y una clave pública válida.');
     return;
   }
+  const quiere = await confirmar('¿Agregar miembro?', m.nombre.trim() + ' podrá aprobar gastos de esta caja.');
+  if (!quiere) return;
   ocupado.value = true;
   try {
     // Si tenemos la clave maestra, inscribimos al miembro como aprobador en la red.
     const secreta = claveMaestra() || m.claveCaja.trim();
+    let pendienteRed = false;
     if (secreta) {
       try {
         await agregarFirmante(caja.value.public_key, secreta, m.publica);
       } catch (e) {
-        aviso.value =
-          'Miembro registrado, pero no se pudo inscribir como aprobador en la red (revisa la clave maestra).';
+        pendienteRed = true;
       }
     } else {
-      aviso.value =
-        'Miembro registrado solo en el panel: falta la clave maestra para inscribirlo en la red.';
+      pendienteRed = true;
     }
     const r = await agregarMiembro(props.id, m.nombre.trim(), m.publica);
     if (!r.datos.ok) {
-      error.value = textoError(r.datos);
+      falla('No se pudo', textoError(r.datos));
       return;
     }
+    // Si se generaron claves aquí, la de aprobación se muestra en el aviso
+    // (después de cerrar, la página recarga y ya no se vuelve a mostrar).
+    const secretaMiembro = m.secretaGenerada;
     nuevoMiembro.value = { nombre: '', publica: '', secretaGenerada: '', claveCaja: '' };
-    await cargarTodo();
+    const nota = pendienteRed
+      ? 'Quedó registrado, pero su inscripción como aprobador en la red quedó pendiente.'
+      : '';
+    const claveHtml = secretaMiembro
+      ? '<div style="word-break:break-all;font-size:13px">Clave de aprobación (entrégala solo a esa persona):<br><code>' +
+        secretaMiembro + '</code></div>'
+      : '';
+    await listo('Miembro agregado', [nota, claveHtml].filter(Boolean).join('<br>') || undefined);
   } finally {
     ocupado.value = false;
   }
@@ -206,17 +218,22 @@ async function proponer() {
   const p = nuevaPropuesta.value;
   const activo = activos.value[p.activoIdx];
   if (!clavePublicaValida(p.destino)) {
-    error.value = 'La cuenta de destino no es válida.';
+    avisar('Destino inválido', 'La cuenta de destino no es válida.');
     return;
   }
   if (!p.monto || Number(p.monto) <= 0) {
-    error.value = 'Ingresa un monto válido.';
+    avisar('Monto inválido', 'Ingresa un monto válido.');
     return;
   }
   if (!activo) {
-    error.value = 'La caja no tiene activos disponibles todavía.';
+    avisar('Sin activos', 'La caja no tiene activos disponibles todavía.');
     return;
   }
+  const quiere = await confirmar(
+    '¿Crear la solicitud?',
+    p.monto + ' ' + activo.codigo + ' a ' + cortar(p.destino) + (p.motivo ? ' · ' + p.motivo : '')
+  );
+  if (!quiere) return;
   ocupado.value = true;
   try {
     const xdr = await construirXdrPago(
@@ -224,13 +241,13 @@ async function proponer() {
     );
     const r = await crearPropuesta(props.id, p.destino.trim(), String(p.monto), p.motivo.trim(), xdr);
     if (!r.datos.ok) {
-      error.value = textoError(r.datos);
+      falla('No se pudo', textoError(r.datos));
       return;
     }
     nuevaPropuesta.value = { destino: '', monto: '', motivo: '', activoIdx: 0 };
-    await cargarTodo();
+    await listo('Solicitud creada', 'Ya puede ser aprobada por los miembros.');
   } catch (e) {
-    error.value = e.message === 'destino_no_existe' ? textoError({ error: e.message }) : 'No se pudo armar la solicitud.';
+    falla('No se pudo', e.message === 'destino_no_existe' ? textoError({ error: e.message }) : 'No se pudo armar la solicitud.');
   } finally {
     ocupado.value = false;
   }
@@ -241,52 +258,55 @@ async function aprobar() {
   error.value = '';
   const a = aprobacion.value;
   if (!a.memberId) {
-    error.value = 'Elige quién aprueba.';
+    avisar('Falta elegir', 'Elige quién aprueba.');
     return;
   }
   if (!claveSecretaValida(a.clave)) {
-    error.value = 'La clave de aprobación no es válida.';
+    avisar('Clave inválida', 'La clave de aprobación no es válida.');
     return;
   }
+  const quiere = await confirmar('¿Confirmar tu aprobación?', 'La solicitud quedará aprobada a tu nombre.');
+  if (!quiere) return;
   ocupado.value = true;
   try {
     const xdrFirmado = firmarXdr(a.propuesta.xdr, a.clave.trim());
     const r = await firmarPropuesta(a.propuesta.id, a.memberId, xdrFirmado);
     if (!r.datos.ok) {
-      error.value = textoError(r.datos);
+      falla('No se pudo', textoError(r.datos));
       return;
     }
     // Si con esta aprobación se completa lo requerido, se ejecuta solo.
+    let detalle = 'Tu aprobación quedó registrada.';
     if (firmasDe(a.propuesta) + 1 >= caja.value.umbral) {
       const ej = await ejecutarPropuesta(a.propuesta.id);
-      if (ej.datos.ok) {
-        aviso.value = 'Solicitud aprobada y ejecutada.';
-      } else {
-        aviso.value = 'Aprobación registrada; al ejecutar: ' + textoError(ej.datos);
-      }
-    } else {
-      aviso.value = 'Aprobación registrada.';
+      detalle = ej.datos.ok
+        ? 'La solicitud quedó aprobada y ejecutada.'
+        : 'Tu aprobación quedó registrada, pero al ejecutar: ' + textoError(ej.datos);
     }
     aprobacion.value = null;
-    await cargarTodo();
+    await listo('Aprobación registrada', detalle);
   } catch (e) {
-    error.value = 'No se pudo registrar la aprobación.';
+    falla('No se pudo', 'No se pudo registrar la aprobación.');
   } finally {
     ocupado.value = false;
   }
 }
 
 async function ejecutar(p) {
+  const quiere = await confirmar(
+    '¿Ejecutar la solicitud?',
+    'Se enviarán ' + p.monto + ' a ' + cortar(p.destino) + '. No se puede deshacer.'
+  );
+  if (!quiere) return;
   ocupado.value = true;
   error.value = '';
   try {
     const r = await ejecutarPropuesta(p.id);
     if (r.datos.ok) {
-      aviso.value = 'Solicitud ejecutada.';
+      await listo('Solicitud ejecutada', 'El gasto ya quedó registrado.');
     } else {
-      error.value = textoError(r.datos);
+      falla('No se pudo', textoError(r.datos));
     }
-    await cargarTodo();
   } finally {
     ocupado.value = false;
   }
@@ -324,7 +344,6 @@ onMounted(async () => {
         <strong>{{ caja.umbral }}</strong> {{ caja.umbral === 1 ? 'aprobación' : 'aprobaciones' }}
       </p>
 
-      <p v-if="aviso" class="texto-ok">{{ aviso }}</p>
       <p v-if="error" class="texto-error">{{ error }}</p>
 
       <!-- Fondos -->
