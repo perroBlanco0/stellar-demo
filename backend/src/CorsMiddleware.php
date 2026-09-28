@@ -16,9 +16,15 @@ final class CorsMiddleware implements MiddlewareInterface
         $allowedOrigins = array_map('trim', explode(',', $_ENV['CORS_ALLOWED_ORIGIN'] ?? '*'));
         $requestOrigin = $request->getHeaderLine('Origin');
 
+        // En desarrollo aceptamos cualquier puerto de localhost/127.0.0.1
+        // (Angular 4200, Vite 4173/5173, etc.) sin tocar la lista en producción.
+        $esLocal = (bool) preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#', $requestOrigin);
+
         $originToSend = in_array('*', $allowedOrigins, true)
             ? '*'
-            : (in_array($requestOrigin, $allowedOrigins, true) ? $requestOrigin : $allowedOrigins[0]);
+            : ($esLocal || in_array($requestOrigin, $allowedOrigins, true)
+                ? $requestOrigin
+                : $allowedOrigins[0]);
 
         return $response
             ->withHeader('Access-Control-Allow-Origin', $originToSend)

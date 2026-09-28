@@ -1,0 +1,263 @@
+/* Panel de Cajas — estilo minimalista tipo Apple sobre AdminLTE/Bootstrap.
+   Una sola variable de acento: cambiarla aquí retiñe toda la app. */
+:root {
+  --acento: #2563eb;
+  --acento-suave: rgba(37, 99, 235, 0.08);
+  --fondo: #f5f5f7;
+  --borde: #e5e5ea;
+  --texto: #1d1d1f;
+  --texto-2: #6e6e73;
+  --alto-header: 56px;
+  --alto-footer: 40px;
+  --ancho-sidebar: 230px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Layout fijo: header arriba, footer abajo, centro scrolleable ---- */
+.app-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--alto-header);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-bottom: 1px solid var(--borde);
+  z-index: 1040;
+}
+
+.marca {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--texto);
+  text-decoration: none;
+}
+.marca:hover { color: var(--acento); }
+
+.header-nota {
+  color: var(--texto-2);
+  font-size: 13px;
+}
+
+.btn-menu {
+  display: none;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  color: var(--texto);
+  padding: 4px 8px;
+}
+
+.app-sidebar {
+  position: fixed;
+  top: var(--alto-header);
+  left: 0;
+  bottom: var(--alto-footer);
+  width: var(--ancho-sidebar);
+  background: #fbfbfd;
+  border-right: 1px solid var(--borde);
+  padding: 18px 12px;
+  overflow-y: auto;
+  transition: transform 0.22s ease;
+  z-index: 1030;
+}
+
+.sidebar-titulo {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-2);
+  padding: 0 10px 6px;
+}
+
+.sidebar-link {
+  display: block;
+  padding: 7px 10px;
+  margin-bottom: 2px;
+  border-radius: 8px;
+  color: var(--texto);
+  font-size: 14px;
+  text-decoration: none;
+}
+.sidebar-link:hover { background: var(--acento-suave); color: var(--texto); }
+.sidebar-link.activo { background: var(--acento-suave); color: var(--acento); font-weight: 600; }
+.sidebar-vacio { padding: 7px 10px; font-size: 13px; color: var(--texto-2); }
+.sidebar-caja { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.app-main {
+  margin-left: var(--ancho-sidebar);
+  padding: calc(var(--alto-header) + 24px) 24px calc(var(--alto-footer) + 24px);
+  min-height: 100vh;
+}
+
+.app-footer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--alto-footer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  color: var(--texto-2);
+  background: #fff;
+  border-top: 1px solid var(--borde);
+  z-index: 1040;
+}
+
+/* ---- Página y tarjetas ---- */
+.pagina { max-width: 960px; margin: 0 auto; }
+
+.titulo { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.subtitulo { color: var(--texto-2); font-size: 15px; margin-bottom: 20px; }
+
+.tarjeta {
+  border: 1px solid var(--borde);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+}
+.tarjeta .card-body { padding: 22px; }
+
+.fila-tarjetas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 767px) {
+  .fila-tarjetas { grid-template-columns: 1fr; }
+}
+
+/* ---- Botones ---- */
+.btn-acento {
+  display: inline-block;
+  background: var(--acento);
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-acento:hover { background: #1d4fd7; color: #fff; }
+.btn-acento:disabled { opacity: 0.55; cursor: default; }
+.btn-acento.btn-sm { padding: 4px 12px; font-size: 13px; }
+
+.btn-acento-outline {
+  color: var(--acento);
+  border: 1px solid var(--acento);
+  background: transparent;
+  border-radius: 10px;
+}
+.btn-acento-outline:hover { background: var(--acento-suave); color: var(--acento); }
+
+/* ---- Estados y textos ---- */
+.texto-2 { color: var(--texto-2); font-size: 14px; }
+.texto-error { color: #d70015; font-size: 14px; }
+.texto-ok { color: #248a3d; font-size: 14px; }
+.texto-aviso { color: #b25000; font-size: 14px; }
+
+.aviso-despertar {
+  background: var(--acento-suave);
+  color: var(--acento);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-bottom: 18px;
+}
+
+.aviso-pendiente {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.badge-estado {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.estado-ok { background: #e6f4ea; color: #248a3d; }
+.estado-pendiente { background: #fff4e5; color: #b25000; }
+
+/* ---- Filas de datos ---- */
+.balance-fila {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borde);
+}
+.balance-monto { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.balance-activo { color: var(--texto-2); font-weight: 600; }
+
+.movimiento-fila,
+.miembro-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borde);
+  font-size: 14px;
+}
+.movimiento-fila:last-child,
+.miembro-fila:last-child,
+.balance-fila:last-child { border-bottom: 0; }
+
+.clave-corta { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+
+/* ---- Propuestas ---- */
+.propuesta {
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: #fff;
+}
+.propuesta-monto { font-size: 17px; font-weight: 600; }
+
+.aprobar-caja {
+  background: var(--fondo);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+/* ---- Claves ---- */
+.clave-bloque {
+  background: var(--fondo);
+  border: 1px dashed var(--borde);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.clave-etiqueta { font-size: 12.5px; color: var(--texto-2); margin-bottom: 6px; }
+.clave-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* ---- Responsivo: sidebar se esconde y se abre con el botón ---- */
+@media (max-width: 991px) {
+  .app-sidebar { transform: translateX(-100%); }
+  body.sidebar-open .app-sidebar { transform: none; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
+  .app-main { margin-left: 0; }
+  .btn-menu { display: block; }
+  .header-nota { display: none; }
+}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de Cajas</title>
+  <!-- SDK para firmar las aprobaciones en el navegador (el usuario nunca ve esto) -->
+  <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js"></script>
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Chrome del template: este bloque es de jQuery, Vue no lo toca -->
+    <nav class="app-header">
+      <button id="btn-menu" class="btn-menu" aria-label="Menú">&#9776;</button>
+      <a class="marca" href="#/">Panel de Cajas</a>
+      <span class="header-nota">gastos con aprobación colectiva</span>
+    </nav>
+
+    <aside class="app-sidebar">
+      <div class="sidebar-titulo">Navegación</div>
+      <a class="sidebar-link" href="#/">Inicio</a>
+      <div class="sidebar-titulo mt-3">Cajas recientes</div>
+      <div id="cajas-recientes"></div>
+    </aside>
+
+    <main class="app-main">
+      <!-- Vue monta las vistas de datos aquí; jQuery no toca este bloque -->
+      <div id="app"></div>
+    </main>
+
+    <footer class="app-footer">Panel de Cajas &middot; demo comunitario</footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
