@@ -1,0 +1,706 @@
+<div class="min-h-screen bg-[#070c14] text-slate-100 flex flex-col justify-between font-['Inter',sans-serif] relative selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- Background Decorative Ambient Glows -->
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <div class="absolute top-[-10%] left-[20%] w-[600px] h-[350px] bg-emerald-500/5 rounded-full blur-3xl"></div>
+    <div class="absolute top-[40%] right-[-5%] w-[500px] h-[400px] bg-teal-600/5 rounded-full blur-3xl"></div>
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b08_1px,transparent_1px),linear-gradient(to_bottom,#1e293b08_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+  </div>
+
+  <!-- Toast Notification -->
+  @if (toastMessage()) {
+  <div class="fixed top-20 right-6 z-50 max-w-md w-full p-4 rounded-xl shadow-2xl border transition-all animate-fade-in backdrop-blur-xl"
+    [ngClass]="{
+      'bg-[#06241a]/95 border-emerald-500/40 text-emerald-200': toastMessage()?.type === 'success',
+      'bg-[#0b1b2d]/95 border-sky-500/40 text-sky-200': toastMessage()?.type === 'info',
+      'bg-[#2d0f14]/95 border-rose-500/40 text-rose-200': toastMessage()?.type === 'error'
+    }">
+    <div class="flex items-start gap-3">
+      @if (toastMessage()?.type === 'success') {
+      <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      } @else if (toastMessage()?.type === 'error') {
+      <div class="w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </div>
+      } @else {
+      <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      }
+      <div class="flex-1">
+        <h4 class="text-sm font-semibold text-white">{{ toastMessage()?.title }}</h4>
+        <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">{{ toastMessage()?.desc }}</p>
+      </div>
+      <button (click)="toastMessage.set(null)" class="text-slate-400 hover:text-white transition-colors">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- TOP APP BAR / HEADER -->
+  <header class="w-full border-b border-slate-800/80 bg-[#08101a]/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo & Emblem -->
+      <div class="flex items-center gap-3 shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-[#09221b] border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md shadow-emerald-950/40 group cursor-pointer hover:border-emerald-400 transition-all">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+          </svg>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-sm sm:text-base font-bold text-white tracking-tight leading-none flex items-center gap-1.5">
+            Apex Vault
+          </span>
+          <span class="text-[10px] font-semibold text-emerald-400/90 tracking-wider uppercase font-mono mt-0.5">
+            STELLAR MULTISIG
+          </span>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="hidden md:flex items-center gap-1 bg-[#0a1420] p-1 rounded-xl border border-slate-800/80">
+        <button 
+          (click)="setTab('boveda')"
+          [ngClass]="activeTab() === 'boveda' 
+            ? 'bg-[#0f2d24] border border-emerald-500/50 text-emerald-300 font-semibold shadow-inner' 
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'"
+          class="px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-all duration-150 cursor-pointer flex items-center gap-2">
+          <span>Bóveda & Caja</span>
+        </button>
+
+        <button 
+          (click)="setTab('firmas')"
+          [ngClass]="activeTab() === 'firmas' 
+            ? 'bg-[#0f2d24] border border-emerald-500/50 text-emerald-300 font-semibold shadow-inner' 
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'"
+          class="px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-all duration-150 cursor-pointer flex items-center gap-2">
+          <span>Firmas Pendientes</span>
+          <span class="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono flex items-center justify-center font-bold">1</span>
+        </button>
+
+        <button 
+          (click)="setTab('politicas')"
+          [ngClass]="activeTab() === 'politicas' 
+            ? 'bg-[#0f2d24] border border-emerald-500/50 text-emerald-300 font-semibold shadow-inner' 
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'"
+          class="px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-all duration-150 cursor-pointer">
+          <span>Políticas & Firmantes</span>
+        </button>
+
+        <button 
+          (click)="setTab('auditoria')"
+          [ngClass]="activeTab() === 'auditoria' 
+            ? 'bg-[#0f2d24] border border-emerald-500/50 text-emerald-300 font-semibold shadow-inner' 
+            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40 border border-transparent'"
+          class="px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-all duration-150 cursor-pointer">
+          <span>Auditoría Ledger</span>
+        </button>
+      </nav>
+
+      <!-- Right Header Actions / Profile / Network -->
+      <div class="flex items-center gap-3">
+        <!-- Network Status Badge -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#081b16] border border-emerald-500/30 text-emerald-300 font-mono text-[11px] font-medium shadow-sm">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span class="font-semibold text-white">Stellar Mainnet</span>
+          <span class="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">ACTIVO</span>
+        </div>
+
+        <!-- User Profile -->
+        <div class="flex items-center gap-2.5 pl-2 border-l border-slate-800/80">
+          <div class="text-right hidden sm:block">
+            <div class="text-xs font-bold text-white leading-tight">Valeria Méndez</div>
+            <div class="text-[10px] text-emerald-400 font-semibold tracking-wider uppercase font-mono">TESORERA TITULAR</div>
+          </div>
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 p-[1px] shadow-sm">
+            <div class="w-full h-full rounded-full bg-[#0b1522] flex items-center justify-center text-[11px] font-bold text-emerald-300 font-mono">
+              VM
+            </div>
+          </div>
+
+          <!-- Exit / Logout Button -->
+          <button 
+            (click)="logout()" 
+            title="Cerrar sesión"
+            class="p-2 ml-1 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex-1 z-10 flex flex-col gap-6">
+
+    <!-- PAGE TITLE SECTION & BREADCRUMB -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800/40 pb-5">
+      <div>
+        <!-- Institutional Tag -->
+        <div class="inline-flex items-center gap-1.5 text-emerald-400 text-[11px] font-mono font-semibold tracking-wider uppercase mb-1.5">
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+          </svg>
+          <span>FEDERACIÓN UNIVERSITARIA • TESORERÍA CENTRAL</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
+          Caja General de Fondos
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          Gobernanza descentralizada y asignación presupuestaria con firma colegiada.
+        </p>
+      </div>
+
+      <!-- Vault Address Pill -->
+      <div class="flex items-center gap-2">
+        <button 
+          (click)="copyAddress()" 
+          title="Copiar Clave Pública de la Bóveda"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#091522] border border-slate-800/90 hover:border-emerald-500/50 hover:bg-[#0c1c2e] text-slate-300 hover:text-white transition-all duration-150 cursor-pointer shadow-sm group">
+          <div class="w-2 h-2 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform"></div>
+          <span class="text-[11px] font-mono text-slate-400 group-hover:text-slate-300">BÓVEDA STELLAR:</span>
+          <span class="text-xs font-mono font-semibold text-slate-200 group-hover:text-emerald-300">G04C ... 9Z0K</span>
+          <svg class="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400 transition-colors ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            @if (copiedAddress()) {
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            } @else {
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            }
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN TWO-COLUMN METRIC & ACTION GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- LEFT COLUMN: SALDO LÍQUIDO DISPONIBLE & BUDGET CARDS (7 Cols) -->
+      <div class="lg:col-span-7 bg-[#0b1422]/90 border border-slate-800/90 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-xl backdrop-blur-sm relative overflow-hidden group">
+        <!-- Subtle Card Top Border Glow -->
+        <div class="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent"></div>
+
+        <div>
+          <!-- Top Row Header -->
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+              SALDO LÍQUIDO DISPONIBLE
+            </span>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#08201a] border border-emerald-500/30 text-emerald-400 text-[11px] font-mono font-medium">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>Custodia 3 de 3 Requeridas</span>
+            </div>
+          </div>
+
+          <!-- Big Balance Display in CLP -->
+          <div class="flex items-baseline gap-2 mb-2 flex-wrap">
+            <span class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight font-sans">
+              $124.500.000
+            </span>
+            <span class="text-lg sm:text-xl font-bold text-emerald-400 tracking-wide font-mono">
+              CLP
+            </span>
+          </div>
+
+          <!-- Stellar XLM & Soroban Subtitle -->
+          <div class="text-xs sm:text-sm text-slate-400 font-mono flex items-center gap-2 mb-6">
+            <span>7,450.00 XLM</span>
+            <span class="text-slate-600">•</span>
+            <span class="text-slate-400">Reserva Soroban USDC Equilibrada</span>
+          </div>
+        </div>
+
+        <!-- Two Inner Stat Boxes -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-800/60 mt-auto">
+          
+          <!-- Inner Box 1: Presupuesto Asignado -->
+          <div class="bg-[#0e1a2b]/80 border border-slate-800/80 rounded-xl p-4 transition-all hover:border-slate-700/80">
+            <div class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono mb-1.5">
+              PRESUPUESTO ASIGNADO 2025
+            </div>
+            <div class="text-lg sm:text-xl font-bold text-white tracking-tight mb-1">
+              $350.000.000 <span class="text-xs font-mono font-semibold text-slate-400">CLP</span>
+            </div>
+            <div class="text-xs font-medium text-emerald-400 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <span>64.4% remanente disponible</span>
+            </div>
+          </div>
+
+          <!-- Inner Box 2: Último Retiro Comprobado -->
+          <div class="bg-[#0e1a2b]/80 border border-slate-800/80 rounded-xl p-4 transition-all hover:border-slate-700/80">
+            <div class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono mb-1.5">
+              ÚLTIMO RETIRO COMPROBADO
+            </div>
+            <div class="text-lg sm:text-xl font-bold text-white tracking-tight mb-1">
+              $8.200.000 <span class="text-xs font-mono font-semibold text-slate-400">CLP</span>
+            </div>
+            <div class="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+              <span>Tx: <span class="text-slate-300 font-medium">#92e01</span></span>
+              <span class="text-slate-600">•</span>
+              <span>14 Mar 2025</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: NUEVO DESEMBOLSO DE FONDOS (5 Cols) -->
+      <div class="lg:col-span-5 bg-[#0b1422]/90 border border-slate-800/90 rounded-2xl p-5 sm:p-6 flex flex-col justify-between shadow-xl backdrop-blur-sm relative">
+        <div class="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-teal-500/30 to-transparent"></div>
+
+        <div>
+          <!-- Header -->
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+              <div class="w-5 h-5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h2 class="text-sm sm:text-base font-bold text-white tracking-tight">
+                Nuevo Desembolso de Fondos
+              </h2>
+            </div>
+            <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 uppercase tracking-wider">
+              STELLAR MULTI-SIG
+            </span>
+          </div>
+
+          <!-- Subtext Description -->
+          <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+            Orden de retiro lista para despacho. Los fondos permanecen bloqueados en el contrato hasta que las tres firmas autorizadas sean estampadas criptográficamente.
+          </p>
+
+          <!-- Concepto Solicitado Box -->
+          <div class="bg-[#0e1a2b] border border-slate-800/80 rounded-xl p-3.5 mb-3">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 font-mono mb-1">
+              CONCEPTO SOLICITADO
+            </div>
+            <div class="text-xs sm:text-[13px] font-bold text-white leading-snug">
+              Anticipo Escenario y Sonido • Semana Cultural 
+              <span class="text-emerald-400 font-mono ml-1">$15.000.000 CLP</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-xs text-slate-400 mt-1.5 font-mono">
+              <svg class="w-3.5 h-3.5 text-slate-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              <span class="truncate">Proveedor: Sonarizaciones del Valle S.A.</span>
+            </div>
+          </div>
+
+          <!-- Regla de Gobernanza Activa Box -->
+          <div class="bg-[#121b1a] border border-amber-500/25 rounded-xl p-3.5 mb-5 flex items-start gap-2.5">
+            <div class="w-5 h-5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <svg class="w-3 h-3 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold text-amber-400 uppercase tracking-wider font-mono">
+                REGLA DE GOBERNANZA ACTIVA
+              </div>
+              <div class="text-xs text-slate-300 mt-0.5 leading-snug">
+                Requiere 3 de 3 Firmas: Presidente, Tesorero y Asesor Legal
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 pt-2">
+          <!-- Primary Sign Button -->
+          <button 
+            type="button"
+            (click)="openSignDisbursementModal()"
+            [disabled]="pendingDisbursement().currentSignatures === 3"
+            class="sm:col-span-7 bg-[#2ee59d] hover:bg-[#27d48f] active:bg-[#20bd7d] disabled:bg-emerald-950 disabled:text-emerald-600 disabled:border-emerald-900/50 disabled:cursor-not-allowed text-slate-950 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all duration-150 active:scale-[0.99] text-xs sm:text-sm cursor-pointer">
+            <svg class="w-4 h-4 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            <span>{{ pendingDisbursement().currentSignatures === 3 ? 'Desembolso Completado' : 'Firmar Desembolso' }}</span>
+          </button>
+
+          <!-- Secondary Request Signatures Button -->
+          <button 
+            type="button"
+            (click)="openRequestModal()"
+            class="sm:col-span-5 bg-[#0e1a2b] hover:bg-[#132238] border border-slate-700/80 text-slate-200 hover:text-white font-semibold py-3 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all text-xs sm:text-sm cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span>Solicitar 3 Firmas</span>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- BOTTOM SECTION: SOLICITUDES RECIENTES EN GOBERNANZA -->
+    <div class="bg-[#0b1422]/90 border border-slate-800/90 rounded-2xl p-5 sm:p-6 shadow-xl backdrop-blur-sm">
+      
+      <!-- Section Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-4 border-b border-slate-800/60">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-white tracking-tight">
+            Solicitudes Recientes en Gobernanza
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Registro inmutable de acuerdos colegiados en el Ledger de Stellar
+          </p>
+        </div>
+        <div class="text-xs text-slate-400 font-mono">
+          Mostrando <span class="text-slate-200 font-semibold">{{ requests().length }}</span> de <span class="text-slate-200 font-semibold">32</span>
+        </div>
+      </div>
+
+      <!-- Requests Table -->
+      <div class="overflow-x-auto -mx-5 sm:-mx-6 px-5 sm:px-6">
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead>
+            <tr class="border-b border-slate-800/80 text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-slate-400">
+              <th class="pb-3 font-semibold pl-2">FECHA</th>
+              <th class="pb-3 font-semibold">CONCEPTO & DESTINO</th>
+              <th class="pb-3 font-semibold text-right pr-6">MONTO</th>
+              <th class="pb-3 font-semibold text-left pl-4">ESTADO MULTI-SIG</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/40 text-xs sm:text-[13px]">
+            @for (req of requests(); track req.id) {
+            <tr class="group hover:bg-[#0e1b2c]/60 transition-colors cursor-pointer" (click)="openRequestDetail(req)">
+              
+              <!-- Fecha -->
+              <td class="py-4 pl-2 font-mono">
+                <div class="font-semibold text-slate-200">{{ req.date }}</div>
+                <div class="text-[11px] text-slate-400">{{ req.time }}</div>
+              </td>
+
+              <!-- Concepto & Destino -->
+              <td class="py-4">
+                <div class="font-bold text-white group-hover:text-emerald-300 transition-colors">
+                  {{ req.concept }}
+                </div>
+                <div class="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
+                  <span class="text-slate-300">{{ req.orderNumber }}</span>
+                  <span class="text-slate-600">•</span>
+                  <span>{{ req.destination }}</span>
+                </div>
+              </td>
+
+              <!-- Monto en CLP y XLM -->
+              <td class="py-4 text-right pr-6 font-mono">
+                <div class="font-bold text-white text-sm">
+                  {{ formatClp(req.amountClp) }}
+                </div>
+                <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+                  {{ req.amountXlm | number:'1.2-2' }} XLM
+                </div>
+              </td>
+
+              <!-- Estado Multi-Sig -->
+              <td class="py-4 pl-4">
+                <div class="flex flex-col gap-1.5 max-w-[140px]">
+                  <!-- Status Label with colored dot -->
+                  <div class="flex items-center gap-1.5 text-xs font-mono font-semibold"
+                    [ngClass]="{
+                      'text-emerald-400': req.status === 'completed',
+                      'text-amber-400': req.status === 'in_progress',
+                      'text-slate-400': req.status === 'pending'
+                    }">
+                    <span class="w-2 h-2 rounded-full"
+                      [ngClass]="{
+                        'bg-emerald-400 shadow-sm shadow-emerald-400': req.status === 'completed',
+                        'bg-amber-400 shadow-sm shadow-amber-400': req.status === 'in_progress',
+                        'bg-slate-500': req.status === 'pending'
+                      }"></span>
+                    <span>{{ req.statusLabel }}</span>
+                  </div>
+
+                  <!-- 3-Segmented Progress Bar -->
+                  <div class="flex items-center gap-1 w-full">
+                    <!-- Segment 1 -->
+                    <div class="h-1.5 flex-1 rounded-sm transition-all"
+                      [ngClass]="req.signedCount >= 1 ? 'bg-emerald-400' : 'bg-slate-700/60'"></div>
+                    <!-- Segment 2 -->
+                    <div class="h-1.5 flex-1 rounded-sm transition-all"
+                      [ngClass]="req.signedCount >= 2 ? 'bg-emerald-400' : 'bg-slate-700/60'"></div>
+                    <!-- Segment 3 -->
+                    <div class="h-1.5 flex-1 rounded-sm transition-all"
+                      [ngClass]="req.signedCount >= 3 ? 'bg-emerald-400' : 'bg-slate-700/60'"></div>
+                  </div>
+                </div>
+              </td>
+
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="w-full border-t border-slate-800/80 bg-[#08101a]/90 text-[11px] text-slate-400 py-4 px-4 sm:px-6 lg:px-8 z-10">
+    <div class="max-w-[1440px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 font-mono">
+      <div>
+        © 2026 Apex Vault Institutional Custody • Federación Universitaria & Fondos Institucionales
+      </div>
+      <div class="flex items-center gap-4 flex-wrap justify-center">
+        <span>Protocolo SEP-0020 Validado</span>
+        <span class="text-slate-600 hidden sm:inline">•</span>
+        <span>Quórum Criptográfico Ed25519</span>
+        <span class="text-slate-600 hidden sm:inline">•</span>
+        <div class="flex items-center gap-1.5 text-emerald-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Horizon Sync 100%</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL: FIRMAR DESEMBOLSO -->
+  @if (showSignModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+    <div class="w-full max-w-lg bg-[#0c1626] border border-slate-700/90 rounded-2xl p-6 shadow-2xl relative">
+      
+      <!-- Close Button -->
+      <button (click)="closeSignModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- Modal Title -->
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Estampar Firma Criptográfica</h3>
+          <p class="text-xs text-slate-400">Autorización multisig de desembolso institucional</p>
+        </div>
+      </div>
+
+      <!-- Detail Box -->
+      <div class="bg-[#09111c] border border-slate-800 rounded-xl p-4 mb-5 space-y-3 font-mono text-xs">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span class="text-slate-400">Orden de Retiro:</span>
+          <span class="text-white font-bold">#ORD-2025-089</span>
+        </div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span class="text-slate-400">Concepto:</span>
+          <span class="text-slate-200">Anticipo Escenario y Sonido</span>
+        </div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span class="text-slate-400">Monto CLP:</span>
+          <span class="text-emerald-400 font-bold text-sm">$15.000.000 CLP</span>
+        </div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <span class="text-slate-400">Equivalente XLM:</span>
+          <span class="text-slate-300">900.00 XLM</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Firmante:</span>
+          <span class="text-emerald-300 font-semibold">Valeria Méndez (Tesorera Titular)</span>
+        </div>
+      </div>
+
+      <!-- Soroban Contract Hash pill -->
+      <div class="p-3 bg-slate-900/60 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-400 mb-6 flex items-center justify-between">
+        <span>Contrato Soroban:</span>
+        <span class="text-slate-300">CA78...90FE (SEP-20 Quórum 3/3)</span>
+      </div>
+
+      <!-- Modal Actions -->
+      <div class="flex items-center gap-3 justify-end">
+        <button 
+          type="button" 
+          (click)="closeSignModal()" 
+          [disabled]="isSigning()"
+          class="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800/60 text-xs font-semibold transition-all">
+          Cancelar
+        </button>
+        <button 
+          type="button" 
+          (click)="executeSignature()" 
+          [disabled]="isSigning()"
+          class="px-5 py-2.5 rounded-xl bg-[#2ee59d] hover:bg-[#27d48f] text-slate-950 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+          @if (isSigning()) {
+          <svg class="animate-spin -ml-1 mr-1 h-4 w-4 text-slate-950" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Firmando con Llave Ed25519...</span>
+          } @else {
+          <svg class="w-4 h-4 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          <span>Confirmar y Estampar Firma</span>
+          }
+        </button>
+      </div>
+
+    </div>
+  </div>
+  }
+
+  <!-- MODAL: SOLICITAR 3 FIRMAS -->
+  @if (showRequestModal()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+    <div class="w-full max-w-lg bg-[#0c1626] border border-slate-700/90 rounded-2xl p-6 shadow-2xl relative">
+      <button (click)="closeRequestModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">Solicitar Firmas de Gobernanza</h3>
+          <p class="text-xs text-slate-400">Notificar a los custodios de la clave colegiada</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+        Se emitirá una notificación push y correo criptográfico firmado con el payload de la transacción para el desembolso de <strong class="text-emerald-400">$15.000.000 CLP</strong>.
+      </p>
+
+      <div class="space-y-2 mb-6 font-mono text-xs">
+        <div class="p-3 bg-[#09111c] border border-slate-800 rounded-xl flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-slate-200">Dr. Alejandro Soto</span>
+            <span class="text-[10px] text-slate-400">(Presidente)</span>
+          </div>
+          <span class="text-emerald-400 font-semibold text-[11px]">Firmado</span>
+        </div>
+
+        <div class="p-3 bg-[#09111c] border border-slate-800 rounded-xl flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span class="text-slate-200">Valeria Méndez</span>
+            <span class="text-[10px] text-slate-400">(Tesorera Titular)</span>
+          </div>
+          <span class="text-amber-400 font-semibold text-[11px]">Pendiente</span>
+        </div>
+
+        <div class="p-3 bg-[#09111c] border border-slate-800 rounded-xl flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="text-slate-200">Lic. Camilo Bravo</span>
+            <span class="text-[10px] text-slate-400">(Asesor Legal)</span>
+          </div>
+          <span class="text-emerald-400 font-semibold text-[11px]">Firmado</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 justify-end">
+        <button (click)="closeRequestModal()" class="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold">
+          Cancelar
+        </button>
+        <button (click)="sendSignatureRequests()" class="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold">
+          Enviar Notificaciones
+        </button>
+      </div>
+
+    </div>
+  </div>
+  }
+
+  <!-- MODAL: DETALLE DE SOLICITUD -->
+  @if (selectedRequest(); as req) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+    <div class="w-full max-w-lg bg-[#0c1626] border border-slate-700/90 rounded-2xl p-6 shadow-2xl relative">
+      <button (click)="closeRequestDetail()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-white">{{ req.concept }}</h3>
+          <p class="text-xs text-slate-400 font-mono">{{ req.orderNumber }} • {{ req.destination }}</p>
+        </div>
+      </div>
+
+      <div class="bg-[#09111c] border border-slate-800 rounded-xl p-4 mb-4 space-y-2 font-mono text-xs">
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Monto en CLP:</span>
+          <span class="text-emerald-400 font-bold text-sm">{{ formatClp(req.amountClp) }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Monto en XLM:</span>
+          <span class="text-slate-200">{{ req.amountXlm | number:'1.2-2' }} XLM</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400">Fecha de Registro:</span>
+          <span class="text-slate-200">{{ req.date }} - {{ req.time }}</span>
+        </div>
+      </div>
+
+      <div class="text-xs font-bold text-white uppercase font-mono tracking-wider mb-2">
+        Firmantes del Quórum ({{ req.signedCount }}/{{ req.requiredSignatures }})
+      </div>
+
+      <div class="space-y-2 mb-6 font-mono text-xs">
+        @for (signer of req.signers; track signer.role) {
+        <div class="p-3 bg-[#09111c] border border-slate-800 rounded-xl flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full" [ngClass]="signer.signed ? 'bg-emerald-400' : 'bg-slate-600'"></span>
+            <span class="text-slate-200">{{ signer.name }}</span>
+            <span class="text-[10px] text-slate-400">({{ signer.role }})</span>
+          </div>
+          <span class="text-[11px] font-semibold" [ngClass]="signer.signed ? 'text-emerald-400' : 'text-slate-500'">
+            {{ signer.signed ? (signer.signedAt || 'Firmado') : 'Pendiente' }}
+          </span>
+        </div>
+        }
+      </div>
+
+      <div class="flex justify-end">
+        <button (click)="closeRequestDetail()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+  }
+
+</div>

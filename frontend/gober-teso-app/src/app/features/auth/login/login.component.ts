@@ -1,6 +1,7 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -10,6 +11,9 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent {
+  private router = inject(Router);
+  private fb = inject(FormBuilder);
+
   loginForm: FormGroup;
   showPassword = signal<boolean>(false);
   isPasskeyEnabled = signal<boolean>(true);
@@ -26,7 +30,7 @@ export class LoginComponent {
     { id: 'xbull', name: 'xBull Wallet', desc: 'Soporte multisig avanzado', icon: 'xbull' },
   ];
 
-  constructor(private fb: FormBuilder) {
+  constructor() {
     this.loginForm = this.fb.group({
       identifier: ['tesorero@gobernanza.stellar', [Validators.required]],
       pin: ['12345678', [Validators.required, Validators.minLength(6)]]
@@ -64,9 +68,13 @@ export class LoginComponent {
       this.showWalletModal.set(false);
       this.notification.set({
         type: 'success',
-        message: `Billetera ${walletName} vinculada con éxito. Sesión de tesorería autorizada.`
+        message: `Billetera ${walletName} vinculada con éxito. Redirigiendo a Bóveda...`
       });
-    }, 1500);
+
+      setTimeout(() => {
+        this.router.navigate(['/dashboard']);
+      }, 700);
+    }, 1200);
   }
 
   onRecoverPin(): void {
@@ -95,6 +103,10 @@ export class LoginComponent {
         type: 'success',
         message: `Autenticación institucional exitosa ${passkeyStatus}. Accediendo a la Bóveda de Gobernanza...`
       });
-    }, 1400);
+
+      setTimeout(() => {
+        this.router.navigate(['/dashboard']);
+      }, 700);
+    }, 1000);
   }
 }
