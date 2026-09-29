@@ -5,14 +5,14 @@ import './estilo.css';
 import $ from 'jquery';
 import { createApp } from 'vue';
 import App from './App.vue';
+import { listarCajasOrganizacion, misCajas } from './api';
 
 // jQuery maneja SOLO el chrome del template (sidebar, toggles, enlaces recientes).
 // Todo ese DOM vive en index.html, fuera de #app. Vue nunca lo toca.
-function pintarRecientes() {
-  const lista = JSON.parse(localStorage.getItem('cajas_recientes') || '[]');
+function pintarLista(lista) {
   const $ul = $('#cajas-recientes').empty();
   if (!lista.length) {
-    $ul.append('<div class="sidebar-vacio">Aún no abres ninguna caja</div>');
+    $ul.append('<div class="sidebar-vacio">Sin cajas por aquí</div>');
     return;
   }
   for (const c of lista) {
@@ -21,6 +21,34 @@ function pintarRecientes() {
       .text(c.nombre || ('Caja ' + c.id));
     if (location.hash === '#/caja/' + c.id) $a.addClass('activo');
     $ul.append($a);
+  }
+}
+
+// Sin sesión: la lista de siempre, desde localStorage.
+function pintarLocal() {
+  $('#sidebar-titulo-cajas').text('Cajas recientes');
+  pintarLista(JSON.parse(localStorage.getItem('cajas_recientes') || '[]'));
+}
+
+// Con sesión el sidebar muestra las cajas del backend; sin sesión,
+// las recientes del navegador como antes.
+function pintarRecientes() {
+  const admin = JSON.parse(localStorage.getItem('admin_sesion') || 'null');
+  const usuario = localStorage.getItem('usuario_token');
+  if (admin) {
+    $('#sidebar-titulo-cajas').text('Cajas de la organización');
+    listarCajasOrganizacion(admin.organizacion_id).then((r) => {
+      if (r.datos.ok) pintarLista(r.datos.cajas || []);
+      else pintarLocal();
+    });
+  } else if (usuario) {
+    $('#sidebar-titulo-cajas').text('Mis cajas');
+    misCajas().then((r) => {
+      if (r.datos.ok) pintarLista(r.datos.cajas || []);
+      else pintarLocal();
+    });
+  } else {
+    pintarLocal();
   }
 }
 

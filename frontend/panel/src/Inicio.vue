@@ -154,6 +154,8 @@ function copiar(texto) {
     <p v-if="error" class="texto-error mt-3">{{ error }}</p>
 
     <p class="mt-4 mb-0">
+      <a href="#/acceso" class="texto-secundario">Acceso</a>
+      <span class="texto-secundario"> &middot; </span>
       <a href="#/admin" class="texto-secundario">Administraci&oacute;n de organizaciones</a>
     </p>
   </div>

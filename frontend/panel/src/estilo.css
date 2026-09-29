@@ -258,6 +258,30 @@ body {
   word-break: break-all;
 }
 
+/* ---- Pestañas locales (Administración) ---- */
+.nav-pestanas {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.nav-pestanas button {
+  border: 1px solid var(--borde);
+  background: #fff;
+  color: var(--texto);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.nav-pestanas button:hover { background: var(--acento-suave); }
+.nav-pestanas button.activo {
+  background: var(--acento-suave);
+  border-color: transparent;
+  color: var(--acento);
+  font-weight: 600;
+}
+
 /* ---- Responsivo: sidebar se esconde y se abre con el botón ---- */
 @media (max-width: 991px) {
   .app-sidebar { transform: translateX(-100%); }

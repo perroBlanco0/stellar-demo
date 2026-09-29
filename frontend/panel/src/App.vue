@@ -4,6 +4,8 @@ import { despertar } from './api';
 import Inicio from './Inicio.vue';
 import Caja from './Caja.vue';
 import Admin from './Admin.vue';
+import Acceso from './Acceso.vue';
+import MisCajas from './MisCajas.vue';
 
 // Ruteo mínimo por hash: #/ -> inicio, #/caja/ID -> detalle. Sin vue-router.
 const vista = ref('inicio');
@@ -17,6 +19,10 @@ function parsearHash() {
     vista.value = 'caja';
   } else if (location.hash.startsWith('#/admin')) {
     vista.value = 'admin';
+  } else if (location.hash.startsWith('#/acceso')) {
+    vista.value = 'acceso';
+  } else if (location.hash.startsWith('#/mis-cajas')) {
+    vista.value = 'miscajas';
   } else {
     vista.value = 'inicio';
   }
@@ -37,5 +43,7 @@ onMounted(() => {
   </div>
   <Inicio v-if="vista === 'inicio'" :despertando="despertando" />
   <Admin v-else-if="vista === 'admin'" />
+  <Acceso v-else-if="vista === 'acceso'" />
+  <MisCajas v-else-if="vista === 'miscajas'" />
   <Caja v-else :id="cajaId" :key="cajaId" :despertando="despertando" />
 </template>

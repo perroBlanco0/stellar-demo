@@ -3,12 +3,13 @@
 // llamamos directo al backend de Render (debe estar en CORS_ALLOWED_ORIGIN).
 const API = import.meta.env.DEV ? '/api' : 'https://stellar-demo-backend.onrender.com';
 
-async function req(metodo, ruta, cuerpo) {
+async function req(metodo, ruta, cuerpo, claveToken = 'admin_token') {
   const headers = {};
   if (cuerpo) headers['Content-Type'] = 'application/json';
 
-  // Si hay sesión de administrador, todas las llamadas la llevan.
-  const token = localStorage.getItem('admin_token');
+  // Las llamadas llevan el token de la sesión que corresponda
+  // (admin por defecto; los endpoints de usuario piden 'usuario_token').
+  const token = localStorage.getItem(claveToken);
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
   try {
@@ -48,3 +49,32 @@ export const crearOrganizacion = (nombre, email, password) =>
 export const agregarAdmin = (orgId, email, password) =>
   req('POST', `/organizaciones/${orgId}/admins`, { email, password });
 export const listarAdmins = (orgId) => req('GET', `/organizaciones/${orgId}/admins`);
+export const actualizarAdmin = (orgId, adminId, password) =>
+  req('PUT', `/organizaciones/${orgId}/admins/${adminId}`, { password });
+export const eliminarAdmin = (orgId, adminId) =>
+  req('DELETE', `/organizaciones/${orgId}/admins/${adminId}`);
+
+// Organización y sus cajas (todo con token de administrador).
+export const listarCajasOrganizacion = (orgId) => req('GET', `/organizaciones/${orgId}/cajas`);
+export const actualizarOrganizacion = (orgId, nombre) =>
+  req('PUT', `/organizaciones/${orgId}`, { nombre });
+export const eliminarOrganizacion = (orgId) => req('DELETE', `/organizaciones/${orgId}`);
+export const actualizarCaja = (id, nombre) => req('PUT', `/cajas/${id}`, { nombre });
+export const eliminarCaja = (id) => req('DELETE', `/cajas/${id}`);
+export const actualizarMiembro = (cajaId, memberId, nombre) =>
+  req('PUT', `/cajas/${cajaId}/members/${memberId}`, { nombre });
+export const eliminarMiembro = (cajaId, memberId) =>
+  req('DELETE', `/cajas/${cajaId}/members/${memberId}`);
+
+// Usuarios registrados y su sesión propia (distinta de la de admin).
+export const listarUsuarios = () => req('GET', '/usuarios');
+export const crearUsuario = (nombre, publicKey, email, password) =>
+  req('POST', '/usuarios', { nombre, public_key: publicKey, email, password });
+export const actualizarUsuario = (id, nombre) => req('PUT', `/usuarios/${id}`, { nombre });
+export const eliminarUsuario = (id) => req('DELETE', `/usuarios/${id}`);
+export const entrarUsuario = (email, password) =>
+  req('POST', '/auth/usuario/login', { email, password });
+export const misCajas = () => req('GET', '/usuarios/me/cajas', undefined, 'usuario_token');
+
+// Historial de acciones de una caja (lectura pública).
+export const listarTrazabilidad = (cajaId) => req('GET', `/cajas/${cajaId}/trazabilidad`);

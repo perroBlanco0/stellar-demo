@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import {
   verCaja, verEstado, verPropuestas, agregarMiembro, crearPropuesta,
-  firmarPropuesta, ejecutarPropuesta, pedirFondos,
+  firmarPropuesta, ejecutarPropuesta, pedirFondos, listarTrazabilidad,
 } from './api';
 import {
   generarClaves, activarCuenta, prepararCaja, agregarFirmante,
@@ -17,6 +17,7 @@ const caja = ref(null);
 const estado = ref(null);        // { balances, transacciones }
 const sinActivar = ref(false);
 const propuestas = ref([]);
+const eventos = ref([]);         // historial de la caja (trazabilidad)
 const activos = ref([]);         // activos reales de la cuenta (con emisor)
 const cargando = ref(true);
 const error = ref('');
@@ -84,6 +85,49 @@ function listoParaEjecutar(p) {
   return p.estado === 'pendiente' && firmasDe(p) >= (caja.value?.umbral || 1);
 }
 
+// ---- Historial: tipos de evento en palabras simples ----
+const TIPOS_EVENTO = {
+  caja_creada: 'Caja creada',
+  caja_editada: 'Caja renombrada',
+  caja_eliminada: 'Caja eliminada',
+  miembro_agregado: 'Miembro agregado',
+  miembro_editado: 'Miembro renombrado',
+  miembro_eliminado: 'Miembro eliminado',
+  propuesta_creada: 'Solicitud de gasto creada',
+  propuesta_firmada: 'Aprobación registrada',
+  propuesta_ejecutada: 'Gasto ejecutado',
+  faucet_pedido: 'Fondos de prueba pedidos',
+  usuario_creado: 'Usuario registrado',
+  usuario_editado: 'Usuario renombrado',
+  usuario_eliminado: 'Usuario eliminado',
+  usuario_login: 'Usuario entró',
+  organizacion_creada: 'Organización creada',
+  organizacion_editada: 'Organización renombrada',
+  organizacion_eliminada: 'Organización eliminada',
+  admin_creado: 'Administrador agregado',
+  admin_editado: 'Contraseña de administrador actualizada',
+  admin_eliminado: 'Administrador eliminado',
+  admin_login: 'Administrador entró',
+};
+
+function tituloEvento(tipo) {
+  return TIPOS_EVENTO[tipo] || (tipo || '').replace(/_/g, ' ');
+}
+
+// Datos clave del detalle, sin campos técnicos (claves, hashes, ids).
+function resumenEvento(e) {
+  const d = e.detalle || {};
+  const partes = [];
+  if (d.nombre) partes.push(d.nombre);
+  if (d.curso) partes.push(d.curso);
+  if (d.email) partes.push(d.email);
+  if (d.monto) partes.push('Monto ' + d.monto);
+  if (d.destino) partes.push('a ' + cortar(d.destino));
+  if (d.motivo) partes.push('«' + d.motivo + '»');
+  if (d.umbral) partes.push(d.umbral + ' por gasto');
+  return partes.join(' · ');
+}
+
 async function cargarTodo() {
   cargando.value = true;
   error.value = '';
@@ -103,6 +147,9 @@ async function cargarTodo() {
 
     const p = await verPropuestas(props.id);
     propuestas.value = p.datos.ok ? p.datos.proposals : [];
+
+    const t = await listarTrazabilidad(props.id);
+    eventos.value = t.datos.ok ? (t.datos.eventos || []) : [];
 
     activos.value = [];
     if (e.datos.ok) {
@@ -523,6 +570,21 @@ onMounted(async () => {
               Clave maestra de la caja (opcional; inscribe al miembro como aprobador en la red)
             </label>
             <input v-model="nuevoMiembro.claveCaja" type="password" class="form-control" autocomplete="off" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Historial: todo lo que ha pasado en la caja -->
+      <div class="card tarjeta">
+        <div class="card-body">
+          <h5 class="mb-3">Historial</h5>
+          <div v-if="!eventos.length" class="texto-2">Sin movimientos registrados todavía.</div>
+          <div v-for="e in eventos" :key="e.id" class="movimiento-fila">
+            <span>
+              {{ tituloEvento(e.tipo) }}
+              <span v-if="resumenEvento(e)" class="texto-2">&middot; {{ resumenEvento(e) }}</span>
+            </span>
+            <span class="texto-2">{{ fechaBonita(e.creado_en) }}</span>
           </div>
         </div>
       </div>

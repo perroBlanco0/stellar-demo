@@ -32,6 +32,23 @@ export async function listo(titulo, html, recargar = true) {
   if (recargar) location.reload();
 }
 
+// Pide un texto (renombrar, contraseña nueva). Devuelve el texto o null si cancela.
+export async function pedirTexto(titulo, texto, opciones = {}) {
+  const r = await Swal.fire({
+    icon: 'question',
+    title: titulo,
+    text: texto,
+    input: opciones.password ? 'password' : 'text',
+    inputValue: opciones.valor || '',
+    inputPlaceholder: opciones.placeholder || '',
+    showCancelButton: true,
+    confirmButtonText: 'Guardar',
+    cancelButtonText: 'Cancelar',
+    confirmButtonColor: ACENTO,
+  });
+  return r.isConfirmed ? (r.value || '') : null;
+}
+
 // Error de una acción.
 export function falla(titulo, texto) {
   Swal.fire({ icon: 'error', title: titulo, text: texto, confirmButtonColor: ACENTO });
