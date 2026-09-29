@@ -49,7 +49,7 @@ if ($driver !== 'mysql') {
 }
 
 // Preflight CORS para todas las rutas.
-$app->options('/{routes:.+}', function (Request $request, Response $response): Response {
+$app->options('/{routes:.*}', function (Request $request, Response $response): Response {
     return $response;
 });
 

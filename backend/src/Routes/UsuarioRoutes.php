@@ -145,6 +145,8 @@ final class UsuarioRoutes
                 return self::jsonError($response, 404, 'usuario_not_found');
             }
 
+            unset($usuario['password_hash']);
+
             $response->getBody()->write(json_encode(['ok' => true, 'usuario' => $usuario]));
 
             return $response;
