@@ -236,7 +236,7 @@ END $$
 
 CREATE PROCEDURE sp_listar_admins(IN p_organizacion_id INT)
 BEGIN
-    SELECT id, organizacion_id, email, creado_en
+    SELECT id, organizacion_id, email, rol, creado_en
     FROM admin_users WHERE organizacion_id = p_organizacion_id;
 END $$
 
@@ -257,7 +257,7 @@ END $$
 
 CREATE PROCEDURE sp_obtener_sesion_por_token(IN p_token VARCHAR(128))
 BEGIN
-    SELECT au.id, au.email, au.organizacion_id
+    SELECT au.id, au.email, au.organizacion_id, au.rol
     FROM admin_sessions s
     JOIN admin_users au ON au.id = s.admin_user_id
     WHERE s.token = p_token AND s.expira_en > CURRENT_TIMESTAMP;

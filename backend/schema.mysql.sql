@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     organizacion_id INT NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    rol VARCHAR(10) NOT NULL DEFAULT 'admin',
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -111,6 +112,8 @@ CREATE INDEX idx_usuario_sessions_token ON usuario_sessions(token);
 -- ALTER TABLE usuarios ADD COLUMN email VARCHAR(255), ADD COLUMN password_hash VARCHAR(255);
 -- y para members sin aprobacion/vinculo a usuario:
 -- ALTER TABLE members ADD COLUMN puede_aprobar TINYINT(1) NOT NULL DEFAULT 1, ADD COLUMN usuario_id INT, ADD FOREIGN KEY (usuario_id) REFERENCES usuarios(id);
+-- y para privilegios de admin (super ve todo):
+-- ALTER TABLE admin_users ADD COLUMN rol VARCHAR(10) NOT NULL DEFAULT 'admin';
 
 CREATE TABLE IF NOT EXISTS codigos_recuperacion (
     id INT AUTO_INCREMENT PRIMARY KEY,

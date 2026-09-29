@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     organizacion_id INTEGER NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    rol TEXT NOT NULL DEFAULT 'admin',
     creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

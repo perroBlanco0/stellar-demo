@@ -10,7 +10,7 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 final class Auth
 {
     /**
-     * Devuelve {id, email, organizacion_id} del admin autenticado, o null.
+     * Devuelve {id, email, organizacion_id, rol} del admin autenticado, o null.
      *
      * @return array<string, mixed>|null
      */
@@ -30,7 +30,7 @@ final class Auth
         }
 
         $stmt = $pdo->prepare(
-            'SELECT au.id, au.email, au.organizacion_id
+            'SELECT au.id, au.email, au.organizacion_id, au.rol
              FROM admin_sessions s
              JOIN admin_users au ON au.id = s.admin_user_id
              WHERE s.token = ? AND s.expira_en > CURRENT_TIMESTAMP'

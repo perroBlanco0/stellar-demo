@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     organizacion_id INTEGER NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    rol TEXT NOT NULL DEFAULT 'admin',
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -109,6 +110,9 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash TEXT;
 -- Migracion para BD existentes: aprobacion ON/OFF y vinculo miembro->usuario.
 ALTER TABLE members ADD COLUMN IF NOT EXISTS puede_aprobar BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuarios(id);
+
+-- Migracion para BD existentes: privilegios de admin (super ve todo).
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS rol TEXT NOT NULL DEFAULT 'admin';
 
 CREATE TABLE IF NOT EXISTS codigos_recuperacion (
     id SERIAL PRIMARY KEY,

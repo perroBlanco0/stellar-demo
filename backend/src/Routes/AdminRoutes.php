@@ -66,14 +66,25 @@ final class AdminRoutes
                 'token' => $token,
                 'email' => $admin['email'],
                 'organizacion_id' => $admin['organizacion_id'],
+                'rol' => $admin['rol'] ?? 'admin',
             ]));
 
             return $response;
         });
 
         // POST /organizaciones — {nombre, email, password}
-        // Crea la organizacion y su primer admin de una vez (bootstrap abierto).
+        // Crea la organizacion y su primer admin de una vez. Solo super-admin.
         $app->post('/organizaciones', function (Request $request, Response $response): Response {
+            $pdo = Database::connection();
+
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            if (!self::esSuper($admin)) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
             $body = json_decode((string) $request->getBody(), true) ?? [];
             $nombre = trim((string) ($body['nombre'] ?? ''));
             $email = strtolower(trim((string) ($body['email'] ?? '')));
@@ -82,8 +93,6 @@ final class AdminRoutes
             if ($nombre === '' || $email === '' || $password === '') {
                 return self::jsonError($response, 400, 'missing_fields');
             }
-
-            $pdo = Database::connection();
 
             $stmt = $pdo->prepare('SELECT id FROM admin_users WHERE email = ?');
             $stmt->execute([$email]);
@@ -119,8 +128,32 @@ final class AdminRoutes
             return $response->withStatus(201);
         });
 
+        // GET /organizaciones — lista todas las organizaciones. Solo super-admin.
+        $app->get('/organizaciones', function (Request $request, Response $response): Response {
+            $pdo = Database::connection();
+
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            if (!self::esSuper($admin)) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
+            $orgs = $pdo->query(
+                'SELECT o.id, o.nombre, o.creado_en,
+                        (SELECT COUNT(*) FROM admin_users a WHERE a.organizacion_id = o.id) AS admins,
+                        (SELECT COUNT(*) FROM cajas c WHERE c.organizacion_id = o.id) AS cajas
+                 FROM organizaciones o ORDER BY o.id'
+            )->fetchAll();
+
+            $response->getBody()->write(json_encode(['ok' => true, 'organizaciones' => $orgs]));
+
+            return $response;
+        });
+
         // POST /organizaciones/{id}/admins — {email, password}
-        // Solo un admin DE ESA organizacion puede agregar otro admin.
+        // Solo un admin DE ESA organizacion (o un super) puede agregar otro admin.
         $app->post('/organizaciones/{id}/admins', function (Request $request, Response $response, array $args): Response {
             $pdo = Database::connection();
 
@@ -128,7 +161,7 @@ final class AdminRoutes
             if (!$admin) {
                 return self::jsonError($response, 401, 'unauthorized');
             }
-            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+            if (!self::permitido($admin, (int) $args['id'])) {
                 return self::jsonError($response, 403, 'forbidden');
             }
 
@@ -159,7 +192,7 @@ final class AdminRoutes
             return $response->withStatus(201);
         });
 
-        // GET /organizaciones/{id}/admins — lista los admins (solo admin de esa org).
+        // GET /organizaciones/{id}/admins — lista los admins (admin de esa org o super).
         $app->get('/organizaciones/{id}/admins', function (Request $request, Response $response, array $args): Response {
             $pdo = Database::connection();
 
@@ -167,7 +200,7 @@ final class AdminRoutes
             if (!$admin) {
                 return self::jsonError($response, 401, 'unauthorized');
             }
-            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+            if (!self::permitido($admin, (int) $args['id'])) {
                 return self::jsonError($response, 403, 'forbidden');
             }
 
@@ -178,7 +211,7 @@ final class AdminRoutes
                 $stmt->closeCursor();
             } else {
                 $stmt = $pdo->prepare(
-                    'SELECT id, organizacion_id, email, creado_en FROM admin_users WHERE organizacion_id = ?'
+                    'SELECT id, organizacion_id, email, rol, creado_en FROM admin_users WHERE organizacion_id = ?'
                 );
                 $stmt->execute([$args['id']]);
                 $admins = $stmt->fetchAll();
@@ -189,7 +222,7 @@ final class AdminRoutes
             return $response;
         });
 
-        // GET /organizaciones/{id}/cajas — cajas de la org (solo admin de esa org).
+        // GET /organizaciones/{id}/cajas — cajas de la org (admin de esa org o super).
         $app->get('/organizaciones/{id}/cajas', function (Request $request, Response $response, array $args): Response {
             $pdo = Database::connection();
 
@@ -197,7 +230,7 @@ final class AdminRoutes
             if (!$admin) {
                 return self::jsonError($response, 401, 'unauthorized');
             }
-            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+            if (!self::permitido($admin, (int) $args['id'])) {
                 return self::jsonError($response, 403, 'forbidden');
             }
 
@@ -235,7 +268,7 @@ final class AdminRoutes
             if (!$admin) {
                 return self::jsonError($response, 401, 'unauthorized');
             }
-            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+            if (!self::permitido($admin, (int) $args['id'])) {
                 return self::jsonError($response, 403, 'forbidden');
             }
 
@@ -267,7 +300,7 @@ final class AdminRoutes
             if (!$admin) {
                 return self::jsonError($response, 401, 'unauthorized');
             }
-            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+            if (!self::permitido($admin, (int) $args['id'])) {
                 return self::jsonError($response, 403, 'forbidden');
             }
 
@@ -319,14 +352,18 @@ final class AdminRoutes
             return $response;
         });
 
-        // PUT /organizaciones/{id}/admins/{adminId} — {password}
-        // Cambia el password de un admin de la org (solo admin de esa org).
+        // PUT /organizaciones/{id}/admins/{adminId} — {password} y/o {rol}
+        // Password: admin de esa org o super. Rol (admin|super): solo super.
         $app->put('/organizaciones/{id}/admins/{adminId}', function (Request $request, Response $response, array $args): Response {
             $body = json_decode((string) $request->getBody(), true) ?? [];
             $password = (string) ($body['password'] ?? '');
+            $rol = (string) ($body['rol'] ?? '');
 
-            if ($password === '') {
+            if ($password === '' && $rol === '') {
                 return self::jsonError($response, 400, 'missing_fields');
+            }
+            if ($rol !== '' && !in_array($rol, ['admin', 'super'], true)) {
+                return self::jsonError($response, 400, 'rol_invalido');
             }
 
             $pdo = Database::connection();
@@ -335,8 +372,19 @@ final class AdminRoutes
             if (!$admin) {
                 return self::jsonError($response, 401, 'unauthorized');
             }
-            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+            if (!self::permitido($admin, (int) $args['id'])) {
                 return self::jsonError($response, 403, 'forbidden');
+            }
+            if ($rol !== '' && !self::esSuper($admin)) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
+            if ($rol === 'admin') {
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM admin_users WHERE rol = 'super' AND id <> ?");
+                $stmt->execute([$args['adminId']]);
+                if ((int) $stmt->fetchColumn() === 0) {
+                    return self::jsonError($response, 409, 'ultimo_super');
+                }
             }
 
             $stmt = $pdo->prepare('SELECT id FROM admin_users WHERE id = ? AND organizacion_id = ?');
@@ -345,15 +393,22 @@ final class AdminRoutes
                 return self::jsonError($response, 404, 'admin_not_found');
             }
 
-            $hash = password_hash($password, PASSWORD_DEFAULT);
+            if ($password !== '') {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
 
-            if (self::isMysql()) {
-                $stmt = $pdo->prepare('CALL sp_actualizar_admin(?, ?)');
-                $stmt->execute([$args['adminId'], $hash]);
-                $stmt->closeCursor();
-            } else {
-                $pdo->prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?')
-                    ->execute([$hash, $args['adminId']]);
+                if (self::isMysql()) {
+                    $stmt = $pdo->prepare('CALL sp_actualizar_admin(?, ?)');
+                    $stmt->execute([$args['adminId'], $hash]);
+                    $stmt->closeCursor();
+                } else {
+                    $pdo->prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?')
+                        ->execute([$hash, $args['adminId']]);
+                }
+            }
+
+            if ($rol !== '') {
+                $pdo->prepare('UPDATE admin_users SET rol = ? WHERE id = ?')
+                    ->execute([$rol, $args['adminId']]);
             }
 
             Eventos::registrar($pdo, null, 'admin_editado', [
@@ -375,14 +430,18 @@ final class AdminRoutes
             if (!$admin) {
                 return self::jsonError($response, 401, 'unauthorized');
             }
-            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+            if (!self::permitido($admin, (int) $args['id'])) {
                 return self::jsonError($response, 403, 'forbidden');
             }
 
-            $stmt = $pdo->prepare('SELECT id FROM admin_users WHERE id = ? AND organizacion_id = ?');
+            $stmt = $pdo->prepare('SELECT id, rol FROM admin_users WHERE id = ? AND organizacion_id = ?');
             $stmt->execute([$args['adminId'], $args['id']]);
-            if (!$stmt->fetch()) {
+            $objetivo = $stmt->fetch();
+            if (!$objetivo) {
                 return self::jsonError($response, 404, 'admin_not_found');
+            }
+            if (($objetivo['rol'] ?? 'admin') === 'super' && !self::esSuper($admin)) {
+                return self::jsonError($response, 403, 'forbidden');
             }
 
             if (self::isMysql()) {
@@ -421,6 +480,17 @@ final class AdminRoutes
 
             return $response;
         });
+    }
+
+    // El super ve y toca cualquier organizacion; el admin solo la suya.
+    private static function permitido(array $admin, int $orgId): bool
+    {
+        return self::esSuper($admin) || (int) $admin['organizacion_id'] === $orgId;
+    }
+
+    private static function esSuper(array $admin): bool
+    {
+        return ($admin['rol'] ?? 'admin') === 'super';
     }
 
     private static function crearAdmin(PDO $pdo, int $orgId, string $email, string $password): string

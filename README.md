@@ -285,8 +285,12 @@ Response (200):
 Errores: 400 missing_fields, 401 credenciales_invalidas
 El token se manda en las rutas protegidas como `Authorization: Bearer <token>`. Dura 7 dias.
 
+## Privilegios
+
+Dos roles en `admin_users.rol`: `admin` (solo su organizacion) y `super` (ve y crea organizaciones, gestiona cualquier admin, asigna/quita el rol super). El primer super se siembra desde `SUPER_ADMIN_EMAIL` + `SUPER_ADMIN_PASSWORD` (org "Cosigna"); no se puede quitar el ultimo super (`409 ultimo_super`). POST /auth/login devuelve `rol`.
+
 POST /organizaciones
-Crea la organizacion y su primer admin de una vez (bootstrap abierto: cualquiera puede registrar una organizacion nueva).
+Crea la organizacion y su primer admin de una vez. Requiere Bearer token de un super-admin.
 Request:
 
 
@@ -295,7 +299,15 @@ Response (201):
 
 
 { "ok": true, "id": 1, "admin_id": 1 }
-Errores: 400 missing_fields, 409 email_ya_registrado
+Errores: 400 missing_fields, 401 unauthorized, 403 forbidden, 409 email_ya_registrado
+
+GET /organizaciones
+Lista todas las organizaciones con conteo de admins y cajas. Requiere Bearer token de un super-admin.
+Response (200):
+
+
+{ "ok": true, "organizaciones": [ { "id": 1, "nombre": "Cosigna", "creado_en": "...", "admins": 1, "cajas": 0 } ] }
+Errores: 401 unauthorized, 403 forbidden
 
 POST /organizaciones/{id}/admins
 Agrega un admin a la organizacion. Requiere Bearer token de un admin DE ESA organizacion.
@@ -318,16 +330,16 @@ Response (200):
 Errores: 401 unauthorized, 403 forbidden
 
 PUT /organizaciones/{id}/admins/{adminId}
-Cambia el password de un admin de la organizacion. Requiere Bearer token de un admin DE ESA organizacion.
+Cambia el password de un admin (admin de esa org o super) y/o su rol (solo super: `admin` | `super`; no se puede bajar al ultimo super).
 Request:
 
 
-{ "password": "nueva12345" }
+{ "password": "nueva12345", "rol": "super" }
 Response (200):
 
 
 { "ok": true }
-Errores: 400 missing_fields, 401 unauthorized, 403 forbidden, 404 admin_not_found
+Errores: 400 missing_fields, 400 rol_invalido, 401 unauthorized, 403 forbidden, 404 admin_not_found, 409 ultimo_super
 
 DELETE /organizaciones/{id}/admins/{adminId}
 Requiere Bearer token de un admin de esa organizacion. No deja a la organizacion sin admins.
@@ -390,5 +402,6 @@ Sin la clave los correos se omiten en silencio. `CORREO_DESDE` define el remiten
 
 Que requiere login y que no:
 - CON login de admin (Bearer token de POST /auth/login): POST /cajas, PUT /cajas/{id}, DELETE /cajas/{id}, PUT /cajas/{id}/members/{memberId}, DELETE /cajas/{id}/members/{memberId}, GET /usuarios, PUT /usuarios/{id}, DELETE /usuarios/{id}, POST /organizaciones/{id}/admins, GET /organizaciones/{id}/admins, PUT /organizaciones/{id}/admins/{adminId}, DELETE /organizaciones/{id}/admins/{adminId}, GET /organizaciones/{id}/cajas, PUT /organizaciones/{id}, DELETE /organizaciones/{id}.
+- SOLO super-admin: POST /organizaciones, GET /organizaciones, cambiar rol en PUT admins.
 - CON login de usuario (Bearer token de POST /auth/usuario/login): GET /usuarios/me/cajas.
-- SIN login (no rompe el flujo del miembro que aprueba gastos): GET /cajas/{id}, GET /cajas/{id}/estado, GET /cajas/{id}/proposals, GET /cajas/{id}/trazabilidad, POST /cajas/{id}/members, POST /cajas/{id}/proposals, POST /proposals/{id}/signatures, POST /proposals/{id}/ejecutar, POST /faucet, POST /usuarios, GET /usuarios/{public_key}, POST /organizaciones, POST /auth/login, POST /auth/usuario/login, POST /auth/recuperar, POST /auth/cambiar-clave.
+- SIN login (no rompe el flujo del miembro que aprueba gastos): GET /cajas/{id}, GET /cajas/{id}/estado, GET /cajas/{id}/proposals, GET /cajas/{id}/trazabilidad, POST /cajas/{id}/members, POST /cajas/{id}/proposals, POST /proposals/{id}/signatures, POST /proposals/{id}/ejecutar, POST /faucet, POST /usuarios, GET /usuarios/{public_key}, POST /auth/login, POST /auth/usuario/login, POST /auth/recuperar, POST /auth/cambiar-clave.

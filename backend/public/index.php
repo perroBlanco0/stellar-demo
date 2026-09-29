@@ -41,6 +41,7 @@ if ($driver !== 'mysql') {
             'ALTER TABLE usuarios ADD COLUMN password_hash TEXT',
             'ALTER TABLE members ADD COLUMN puede_aprobar INTEGER NOT NULL DEFAULT 1',
             'ALTER TABLE members ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)',
+            'ALTER TABLE admin_users ADD COLUMN rol TEXT NOT NULL DEFAULT \'admin\'',
         ] as $alter) {
             try {
                 $pdo->exec($alter);
@@ -48,6 +49,26 @@ if ($driver !== 'mysql') {
                 // La columna ya existe.
             }
         }
+    }
+}
+
+// Primer super-admin: se siembra una sola vez desde env y vive en la org "Cosigna".
+// SUPER_ADMIN_EMAIL + SUPER_ADMIN_PASSWORD; sin ellas no se crea nada.
+$superEmail = strtolower(trim((string) ($_ENV['SUPER_ADMIN_EMAIL'] ?? '')));
+$superPass = (string) ($_ENV['SUPER_ADMIN_PASSWORD'] ?? '');
+if ($superEmail !== '' && $superPass !== '') {
+    $pdo = Database::connection();
+    $faltaSuper = (int) $pdo->query("SELECT COUNT(*) FROM admin_users WHERE rol = 'super'")->fetchColumn() === 0;
+    if ($faltaSuper) {
+        $stmt = $pdo->prepare('SELECT id FROM organizaciones WHERE nombre = ?');
+        $stmt->execute(['Cosigna']);
+        $orgId = $stmt->fetchColumn();
+        if (!$orgId) {
+            $pdo->prepare('INSERT INTO organizaciones (nombre) VALUES (?)')->execute(['Cosigna']);
+            $orgId = $pdo->lastInsertId();
+        }
+        $pdo->prepare('INSERT INTO admin_users (organizacion_id, email, password_hash, rol) VALUES (?, ?, ?, ?)')
+            ->execute([$orgId, $superEmail, password_hash($superPass, PASSWORD_DEFAULT), 'super']);
     }
 }
 
