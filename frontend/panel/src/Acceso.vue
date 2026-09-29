@@ -53,7 +53,12 @@ async function entrarComoAdmin() {
     localStorage.setItem('admin_token', r.datos.token);
     localStorage.setItem(
       'admin_sesion',
-      JSON.stringify({ token: r.datos.token, email: r.datos.email, organizacion_id: r.datos.organizacion_id })
+      JSON.stringify({
+        token: r.datos.token,
+        email: r.datos.email,
+        organizacion_id: r.datos.organizacion_id,
+        rol: r.datos.rol || 'admin',
+      })
     );
     await listo('Sesión iniciada', 'Ya puedes administrar tu organización.', false);
     location.hash = '#/config';

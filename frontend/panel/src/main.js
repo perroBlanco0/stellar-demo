@@ -66,6 +66,13 @@ function pintarRecientes() {
   }
 }
 
+// El mantenedor de organizaciones solo aparece en el menú si la sesión
+// guardada es de un super-admin.
+function pintarPermisos() {
+  const admin = JSON.parse(localStorage.getItem('admin_sesion') || 'null');
+  $('#link-organizaciones').toggle(!!admin && admin.rol === 'super');
+}
+
 $(function () {
   $('#btn-menu').on('click', function () {
     $('body').toggleClass('sidebar-open');
@@ -76,6 +83,7 @@ $(function () {
     $('body').removeClass('sidebar-open');
     pintarActivos();
     pintarRecientes();
+    pintarPermisos();
   });
 
   // Vue avisa cuando cambia la lista de recientes (al abrir una caja).
@@ -83,6 +91,7 @@ $(function () {
 
   pintarActivos();
   pintarRecientes();
+  pintarPermisos();
 });
 
 createApp(App).mount('#app');

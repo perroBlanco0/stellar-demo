@@ -56,6 +56,12 @@ export const actualizarAdmin = (orgId, adminId, password) =>
 export const eliminarAdmin = (orgId, adminId) =>
   req('DELETE', `/organizaciones/${orgId}/admins/${adminId}`);
 
+// Todas las organizaciones y el rol de sus admins (solo super-admin;
+// cualquier otro rol recibe 403 forbidden).
+export const listarOrganizaciones = () => req('GET', '/organizaciones');
+export const cambiarRolAdmin = (orgId, adminId, rol) =>
+  req('PUT', `/organizaciones/${orgId}/admins/${adminId}`, { rol });
+
 // Organización y sus cajas (todo con token de administrador).
 export const listarCajasOrganizacion = (orgId) => req('GET', `/organizaciones/${orgId}/cajas`);
 export const actualizarOrganizacion = (orgId, nombre) =>
