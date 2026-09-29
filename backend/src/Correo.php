@@ -6,6 +6,7 @@ namespace App;
 // Config por env:
 //   RESEND_API_KEY  — clave de resend.com (sin ella los correos se omiten en silencio)
 //   CORREO_DESDE    — remitente, ej. "Cosigna <hola@tudominio.cl>" (default resend.dev de pruebas)
+//   CORREO_LOGO_URL — URL publica del logo (default: el logo del propio panel)
 // Nunca rompe el request: si el envio falla devuelve false y el flujo sigue.
 final class Correo
 {
@@ -139,13 +140,19 @@ final class Correo
     // Marco de marca: fondo neutro, tarjeta blanca, acento azul del panel.
     private static function plantilla(string $cuerpo): string
     {
+        $logo = $_ENV['CORREO_LOGO_URL'] ?? 'https://stellar-demo-frontend.onrender.com/logo.png';
+        $logo = htmlspecialchars($logo, ENT_QUOTES);
+
         return "<!doctype html>
 <html><body style='margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif'>
   <div style='max-width:520px;margin:32px auto;padding:0 16px'>
     <div style='background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)'>
       <div style='padding:20px 24px;border-bottom:1px solid #f4f4f5'>
-        <span style='font-size:17px;font-weight:700;color:#111827;letter-spacing:-.3px'>Cosigna</span>
-        <span style='font-size:12px;color:#6b7280;margin-left:8px'>tesorerías colectivas</span>
+        <img src='{$logo}' alt='Cosigna' width='28' height='28'
+             style='display:inline-block;vertical-align:middle;border:0' />
+        <span style='font-size:17px;font-weight:700;color:#111827;letter-spacing:-.3px;
+                     vertical-align:middle;margin-left:8px'>Cosigna</span>
+        <span style='font-size:12px;color:#6b7280;margin-left:8px;vertical-align:middle'>tesorerías colectivas</span>
       </div>
       <div style='padding:24px'>{$cuerpo}</div>
       <div style='padding:16px 24px;background:#fafafa;border-top:1px solid #f4f4f5;
