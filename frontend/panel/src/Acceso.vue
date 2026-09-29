@@ -94,6 +94,9 @@ async function registrar() {
     regNombre.value = '';
     regEmail.value = '';
     regPassword.value = '';
+    // La clave de aprobación también queda en este navegador: así la persona
+    // aprueba con un clic desde Mis cajas, sin pegar nada.
+    localStorage.setItem('clave_aprobacion_' + claves.publica, claves.secreta);
     // Sin recargar: las claves se muestran una sola vez y hay que guardarlas.
     await listo(
       'Cuenta creada',
@@ -102,7 +105,8 @@ async function registrar() {
         '<div class="clave-mono" style="word-break:break-all;margin:6px 0 12px">' + claves.publica + '</div>' +
         'Tu clave de aprobación es la que usarás para aprobar gastos. Guárdala, solo se muestra una vez:' +
         '<div class="clave-mono" style="word-break:break-all;margin:6px 0">' + claves.secreta + '</div>' +
-        'Ya puedes entrar con tu correo y contraseña.' +
+        'Quedó recordada en este navegador, así aprobarás con un clic desde Mis cajas.' +
+        ' Ya puedes entrar con tu correo y contraseña.' +
       '</div>',
       false
     );

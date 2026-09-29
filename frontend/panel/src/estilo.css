@@ -202,6 +202,11 @@ body {
 .estado-ok { background: #e6f4ea; color: #248a3d; }
 .estado-pendiente { background: #fff4e5; color: #b25000; }
 
+/* Badge que también es botón (prender/apagar la aprobación de un miembro) */
+.badge-boton { border: 0; cursor: pointer; font-family: inherit; }
+.badge-boton:hover { filter: brightness(0.95); }
+.badge-boton:disabled { opacity: 0.55; cursor: default; }
+
 /* ---- Filas de datos ---- */
 .balance-fila {
   display: flex;

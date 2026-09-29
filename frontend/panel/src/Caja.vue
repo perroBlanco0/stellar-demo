@@ -1,7 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import {
-  verCaja, verEstado, verPropuestas, agregarMiembro, crearPropuesta,
+  verCaja, verEstado, verPropuestas, agregarMiembro, agregarMiembroPorUsuario,
+  toggleAprobacionMiembro, listarUsuarios, crearPropuesta,
   firmarPropuesta, ejecutarPropuesta, pedirFondos, listarTrazabilidad,
 } from './api';
 import {
@@ -27,6 +28,16 @@ const nuevoMiembro = ref({ nombre: '', publica: '', secretaGenerada: '', claveCa
 const nuevaPropuesta = ref({ destino: '', monto: '', motivo: '', activoIdx: 0 });
 const aprobacion = ref(null);    // { propuesta, memberId, clave }
 const ocupado = ref(false);
+
+// Sesión de administrador (para listar usuarios y prender/apagar aprobaciones)
+const haySesionAdmin = ref(false);
+const usuariosRegistrados = ref([]);   // usuarios aún no miembros de esta caja
+const usuarioSeleccionado = ref('');
+
+// Sesión de usuario registrado: si es miembro y su clave de aprobación
+// quedó recordada al registrarse, aprueba con un clic.
+const miembroSesion = ref(null);       // miembro de esta caja que calza con la sesión
+const claveRecordada = ref('');        // clave_aprobacion_<public_key> de localStorage
 
 function claveMaestra() {
   return localStorage.getItem('caja_secreta_' + props.id) || '';
@@ -55,6 +66,10 @@ function textoError(datos) {
     issuer_not_configured: 'El servicio de fondos no está disponible.',
     sin_conexion: 'Sin conexión con el servicio. Reintenta en un momento.',
     destino_no_existe: 'La cuenta de destino no existe y no puede recibir este activo.',
+    aprobacion_desactivada: 'Este miembro tiene la aprobación desactivada.',
+    usuario_not_found: 'No se encontró el usuario.',
+    unauthorized: 'La sesión de administrador venció. Entra de nuevo.',
+    forbidden: 'No tienes permiso para esta acción.',
   };
   return mapa[datos.error] || 'Ocurrió un error (' + (datos.error || 'desconocido') + ').';
 }
@@ -69,16 +84,45 @@ function fechaBonita(iso) {
   return isNaN(d) ? iso : d.toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+// Las firmas pueden venir como 'signatures' (member_id) o 'firmas'
+// (public_key + created_at), según el backend. Leemos las dos.
+function firmasDeLista(p) {
+  return p.signatures || p.firmas || [];
+}
+
 function firmasDe(p) {
-  return (p.signatures || []).length;
+  return firmasDeLista(p).length;
 }
 
 function yaFirmo(p, memberId) {
-  return (p.signatures || []).some((s) => s.member_id === memberId);
+  const m = (caja.value?.members || []).find((x) => x.id === memberId);
+  return firmasDeLista(p).some(
+    (s) => s.member_id === memberId || (m && s.public_key && s.public_key === m.public_key)
+  );
 }
 
+// Nombres de los miembros que ya aprobaron esta solicitud.
+function nombresQueAprobaron(p) {
+  return firmasDeLista(p)
+    .map((s) => {
+      const m = (caja.value?.members || []).find(
+        (x) => x.id === s.member_id || (s.public_key && x.public_key === s.public_key)
+      );
+      return m ? m.nombre : null;
+    })
+    .filter(Boolean);
+}
+
+// El campo puede no venir en backends antiguos: ahí todos aprueban.
+function puedeAprobar(m) {
+  if (m.puede_aprobar === undefined || m.puede_aprobar === null) return true;
+  return !!Number(m.puede_aprobar);
+}
+
+// Quienes pueden aparecer en el "¿Quién aprueba?": sin firmar y con
+// aprobación prendida (los apagados no pueden firmar).
 function miembrosSinFirmar(p) {
-  return (caja.value?.members || []).filter((m) => !yaFirmo(p, m.id));
+  return (caja.value?.members || []).filter((m) => !yaFirmo(p, m.id) && puedeAprobar(m));
 }
 
 function listoParaEjecutar(p) {
@@ -128,6 +172,30 @@ function resumenEvento(e) {
   return partes.join(' · ');
 }
 
+// Cruza la sesión de usuario con los miembros de la caja: si calza su
+// clave pública, puede aprobar con un clic usando la clave recordada.
+function cargarSesionUsuario() {
+  const guardada = localStorage.getItem('usuario_sesion');
+  const sesion = guardada ? JSON.parse(guardada) : null;
+  const pk = sesion?.public_key;
+  miembroSesion.value = pk
+    ? (caja.value?.members || []).find((m) => m.public_key === pk) || null
+    : null;
+  claveRecordada.value = pk ? localStorage.getItem('clave_aprobacion_' + pk) || '' : '';
+}
+
+// Lista de usuarios registrados para el agregado directo (solo con
+// sesión de admin: GET /usuarios la exige). Filtramos los que ya son
+// miembros de esta caja por su clave pública.
+async function cargarUsuariosRegistrados() {
+  if (!haySesionAdmin.value) return;
+  const r = await listarUsuarios();
+  if (r.datos.ok) {
+    const pks = new Set((caja.value?.members || []).map((m) => m.public_key));
+    usuariosRegistrados.value = (r.datos.usuarios || []).filter((u) => !pks.has(u.public_key));
+  }
+}
+
 async function cargarTodo() {
   cargando.value = true;
   error.value = '';
@@ -150,6 +218,9 @@ async function cargarTodo() {
 
     const t = await listarTrazabilidad(props.id);
     eventos.value = t.datos.ok ? (t.datos.eventos || []) : [];
+
+    cargarSesionUsuario();
+    await cargarUsuariosRegistrados();
 
     activos.value = [];
     if (e.datos.ok) {
@@ -259,6 +330,75 @@ async function agregar() {
   }
 }
 
+// Agregar por usuario registrado: el servidor no tiene su clave de
+// aprobación, así que el aviso le dice cómo entrar para aprobar.
+async function agregarPorUsuario() {
+  error.value = '';
+  const u = usuariosRegistrados.value.find((x) => x.id === usuarioSeleccionado.value);
+  if (!u) {
+    avisar('Falta elegir', 'Elige un usuario registrado.');
+    return;
+  }
+  const quiere = await confirmar('¿Agregar miembro?', u.nombre + ' podrá aprobar gastos de esta caja.');
+  if (!quiere) return;
+  ocupado.value = true;
+  try {
+    // Si tenemos la clave maestra, lo inscribimos como aprobador en la red.
+    const secreta = claveMaestra() || nuevoMiembro.value.claveCaja.trim();
+    let pendienteRed = false;
+    if (secreta) {
+      try {
+        await agregarFirmante(caja.value.public_key, secreta, u.public_key);
+      } catch (e) {
+        pendienteRed = true;
+      }
+    } else {
+      pendienteRed = true;
+    }
+    const r = await agregarMiembroPorUsuario(props.id, u.id);
+    if (!r.datos.ok) {
+      falla('No se pudo', textoError(r.datos));
+      return;
+    }
+    usuarioSeleccionado.value = '';
+    const nota = pendienteRed
+      ? 'Quedó registrado, pero su inscripción como aprobador en la red quedó pendiente.<br>'
+      : '';
+    await listo(
+      'Miembro agregado',
+      nota + 'El miembro aprueba entrando con su correo en Acceso → Mis cajas.'
+    );
+  } finally {
+    ocupado.value = false;
+  }
+}
+
+// Prender/apagar la aprobación de un miembro (solo con sesión de admin).
+async function toggleAprobacion(m) {
+  const nuevo = !puedeAprobar(m);
+  const quiere = await confirmar(
+    nuevo ? '¿Activar la aprobación?' : '¿Desactivar la aprobación?',
+    nuevo
+      ? m.nombre + ' volverá a poder aprobar gastos.'
+      : m.nombre + ' no podrá aprobar gastos hasta que la actives de nuevo.'
+  );
+  if (!quiere) return;
+  ocupado.value = true;
+  try {
+    const r = await toggleAprobacionMiembro(props.id, m.id, nuevo);
+    if (!r.datos.ok) {
+      (r.estado === 401 || r.estado === 403 ? avisar : falla)('No se pudo', textoError(r.datos));
+      return;
+    }
+    await listo(
+      nuevo ? 'Aprobación activada' : 'Aprobación desactivada',
+      nuevo ? m.nombre + ' ya puede aprobar gastos.' : m.nombre + ' quedó sin poder aprobar.'
+    );
+  } finally {
+    ocupado.value = false;
+  }
+}
+
 // ---- Propuestas ----
 async function proponer() {
   error.value = '';
@@ -314,26 +454,51 @@ async function aprobar() {
   }
   const quiere = await confirmar('¿Confirmar tu aprobación?', 'La solicitud quedará aprobada a tu nombre.');
   if (!quiere) return;
+  if (await registrarFirma(a.propuesta, a.memberId, a.clave)) aprobacion.value = null;
+}
+
+// Un clic para el usuario logueado que es miembro y tiene su clave de
+// aprobación recordada: firma directo, sin elegir nombre ni pegar nada.
+function puedoAprobarDirecto(p) {
+  return !!(
+    miembroSesion.value &&
+    claveRecordada.value &&
+    puedeAprobar(miembroSesion.value) &&
+    !yaFirmo(p, miembroSesion.value.id)
+  );
+}
+
+async function aprobarMio(p) {
+  error.value = '';
+  const quiere = await confirmar('¿Confirmar tu aprobación?', 'La solicitud quedará aprobada a tu nombre.');
+  if (!quiere) return;
+  await registrarFirma(p, miembroSesion.value.id, claveRecordada.value);
+}
+
+// Firma la solicitud y avisa; si completa las aprobaciones requeridas,
+// se ejecuta sola. Devuelve true solo si quedó registrada.
+async function registrarFirma(p, memberId, clave) {
   ocupado.value = true;
   try {
-    const xdrFirmado = firmarXdr(a.propuesta.xdr, a.clave.trim());
-    const r = await firmarPropuesta(a.propuesta.id, a.memberId, xdrFirmado);
+    const xdrFirmado = firmarXdr(p.xdr, clave.trim());
+    const r = await firmarPropuesta(p.id, memberId, xdrFirmado);
     if (!r.datos.ok) {
-      falla('No se pudo', textoError(r.datos));
-      return;
+      (r.datos.error === 'aprobacion_desactivada' ? avisar : falla)('No se pudo', textoError(r.datos));
+      return false;
     }
     // Si con esta aprobación se completa lo requerido, se ejecuta solo.
     let detalle = 'Tu aprobación quedó registrada.';
-    if (firmasDe(a.propuesta) + 1 >= caja.value.umbral) {
-      const ej = await ejecutarPropuesta(a.propuesta.id);
+    if (firmasDe(p) + 1 >= caja.value.umbral) {
+      const ej = await ejecutarPropuesta(p.id);
       detalle = ej.datos.ok
         ? 'La solicitud quedó aprobada y ejecutada.'
         : 'Tu aprobación quedó registrada, pero al ejecutar: ' + textoError(ej.datos);
     }
-    aprobacion.value = null;
     await listo('Aprobación registrada', detalle);
+    return true;
   } catch (e) {
     falla('No se pudo', 'No se pudo registrar la aprobación.');
+    return false;
   } finally {
     ocupado.value = false;
   }
@@ -366,6 +531,7 @@ function copiar(texto) {
 onMounted(async () => {
   // Esperamos a que el backend despierte antes de pedir datos reales.
   while (props.despertando) await new Promise((r) => setTimeout(r, 500));
+  haySesionAdmin.value = !!localStorage.getItem('admin_token');
   await cargarTodo();
 });
 </script>
@@ -448,11 +614,24 @@ onMounted(async () => {
                 <span :class="['badge-estado', p.estado === 'ejecutada' ? 'estado-ok' : 'estado-pendiente']">
                   {{ p.estado }}
                 </span>
-                <div class="texto-2 mt-1">{{ firmasDe(p) }} de {{ caja.umbral }} aprobaciones</div>
+                <div class="texto-2 mt-1">
+                  {{ firmasDe(p) }} de {{ caja.umbral }} aprobaciones
+                  <template v-if="nombresQueAprobaron(p).length">
+                    · ya aprobaron: {{ nombresQueAprobaron(p).join(', ') }}
+                  </template>
+                </div>
               </div>
             </div>
 
             <div class="d-flex gap-2 mt-2" v-if="p.estado === 'pendiente'">
+              <button
+                v-if="puedoAprobarDirecto(p)"
+                class="btn btn-sm btn-acento"
+                :disabled="ocupado"
+                @click="aprobarMio(p)"
+              >
+                Aprobar como {{ miembroSesion.nombre }}
+              </button>
               <button
                 v-if="miembrosSinFirmar(p).length"
                 class="btn btn-sm btn-acento-outline"
@@ -535,7 +714,23 @@ onMounted(async () => {
           <div v-if="!caja.members?.length" class="texto-2">Todavía no hay miembros.</div>
           <div v-for="m in caja.members" :key="m.id" class="miembro-fila">
             <span>{{ m.nombre }}</span>
-            <span class="clave-corta texto-2">{{ cortar(m.public_key) }}</span>
+            <span class="d-flex align-items-center gap-2">
+              <span class="clave-corta texto-2">{{ cortar(m.public_key) }}</span>
+              <button
+                v-if="haySesionAdmin"
+                :class="['badge-estado badge-boton', puedeAprobar(m) ? 'estado-ok' : 'estado-pendiente']"
+                :disabled="ocupado"
+                @click="toggleAprobacion(m)"
+              >
+                Aprobación: {{ puedeAprobar(m) ? 'ON' : 'OFF' }}
+              </button>
+              <span
+                v-else
+                :class="['badge-estado', puedeAprobar(m) ? 'estado-ok' : 'estado-pendiente']"
+              >
+                Aprobación: {{ puedeAprobar(m) ? 'ON' : 'OFF' }}
+              </span>
+            </span>
           </div>
 
           <hr class="my-4" />
@@ -571,6 +766,35 @@ onMounted(async () => {
             </label>
             <input v-model="nuevoMiembro.claveCaja" type="password" class="form-control" autocomplete="off" />
           </div>
+
+          <!-- Alternativa: agregar un usuario ya registrado (necesita sesión
+               de administrador para listar los usuarios) -->
+          <template v-if="haySesionAdmin">
+            <hr class="my-3" />
+            <h6 class="mb-3">O agregar un usuario registrado</h6>
+            <div v-if="usuariosRegistrados.length" class="row g-2 align-items-end">
+              <div class="col-md-9">
+                <label class="form-label">Usuario</label>
+                <select v-model="usuarioSeleccionado" class="form-select">
+                  <option value="" disabled>Elige un usuario</option>
+                  <option v-for="u in usuariosRegistrados" :key="u.id" :value="u.id">
+                    {{ u.nombre }}{{ u.email ? ' · ' + u.email : '' }}
+                  </option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <button class="btn-acento w-100" :disabled="ocupado" @click="agregarPorUsuario">
+                  Agregar
+                </button>
+              </div>
+            </div>
+            <p v-else class="texto-2 mb-0">
+              No hay usuarios registrados para agregar (o ya son todos miembros).
+            </p>
+            <p class="texto-secundario mt-2 mb-0">
+              El usuario aprueba entrando con su correo en Acceso → Mis cajas.
+            </p>
+          </template>
         </div>
       </div>
 

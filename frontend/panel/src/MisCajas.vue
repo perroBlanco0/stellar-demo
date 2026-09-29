@@ -1,12 +1,13 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { misCajas } from './api';
+import { misCajas, verPropuestas } from './api';
 import { confirmar, listo, avisar } from './avisos';
 
 // Vista del usuario registrado: las cajas donde es miembro.
 // Usa su propio token (usuario_token), no el de administrador.
 const sesion = ref(null);
 const cajas = ref([]);
+const pendientes = ref({}); // caja.id -> cuántas solicitudes siguen pendientes
 const cargando = ref(true);
 
 function cargarSesion() {
@@ -32,6 +33,16 @@ onMounted(async () => {
   const r = await misCajas();
   if (r.datos.ok) {
     cajas.value = r.datos.cajas || [];
+    // Contamos las solicitudes pendientes de cada caja para el badge.
+    for (const c of cajas.value) {
+      verPropuestas(c.id).then((p) => {
+        if (p.datos.ok) {
+          pendientes.value[c.id] = (p.datos.proposals || []).filter(
+            (x) => x.estado === 'pendiente'
+          ).length;
+        }
+      });
+    }
   } else if (r.estado === 401) {
     localStorage.removeItem('usuario_token');
     localStorage.removeItem('usuario_sesion');
@@ -81,6 +92,9 @@ onMounted(async () => {
               {{ c.nombre }}
               <span class="texto-secundario">
                 &middot; {{ c.umbral }} {{ c.umbral === 1 ? 'aprobación' : 'aprobaciones' }} por gasto
+              </span>
+              <span v-if="pendientes[c.id]" class="badge-estado estado-pendiente ms-2">
+                {{ pendientes[c.id] }} {{ pendientes[c.id] === 1 ? 'pendiente' : 'pendientes' }}
               </span>
             </span>
             <a class="btn-acento btn-sm" :href="'#/caja/' + c.id">Abrir</a>

@@ -33,6 +33,8 @@ export const crearCaja = (nombre, curso, publicKey, umbral) =>
   req('POST', '/cajas', { nombre, curso, public_key: publicKey, umbral });
 export const agregarMiembro = (cajaId, nombre, publicKey) =>
   req('POST', `/cajas/${cajaId}/members`, { nombre, public_key: publicKey });
+export const agregarMiembroPorUsuario = (cajaId, usuarioId) =>
+  req('POST', `/cajas/${cajaId}/members`, { usuario_id: usuarioId });
 export const crearPropuesta = (cajaId, destino, monto, motivo, xdr) =>
   req('POST', `/cajas/${cajaId}/proposals`, { destino, monto, motivo, xdr });
 export const firmarPropuesta = (propuestaId, memberId, xdr) =>
@@ -63,6 +65,8 @@ export const actualizarCaja = (id, nombre) => req('PUT', `/cajas/${id}`, { nombr
 export const eliminarCaja = (id) => req('DELETE', `/cajas/${id}`);
 export const actualizarMiembro = (cajaId, memberId, nombre) =>
   req('PUT', `/cajas/${cajaId}/members/${memberId}`, { nombre });
+export const toggleAprobacionMiembro = (cajaId, memberId, puedeAprobar) =>
+  req('PUT', `/cajas/${cajaId}/members/${memberId}`, { puede_aprobar: puedeAprobar });
 export const eliminarMiembro = (cajaId, memberId) =>
   req('DELETE', `/cajas/${cajaId}/members/${memberId}`);
 
