@@ -7,6 +7,7 @@ namespace App;
 //   RESEND_API_KEY  — clave de resend.com (sin ella los correos se omiten en silencio)
 //   CORREO_DESDE    — remitente, ej. "Cosigna <hola@tudominio.cl>" (default resend.dev de pruebas)
 //   CORREO_LOGO_URL — URL publica del logo (default: el logo del propio panel)
+//   CORREO_APP_URL  — base del panel para los botones (default: el panel en Render)
 // Nunca rompe el request: si el envio falla devuelve false y el flujo sigue.
 final class Correo
 {
@@ -95,9 +96,7 @@ final class Correo
                     <tr><td style='padding:8px 0;color:#6b7280'>Motivo</td>
                         <td style='padding:8px 0;text-align:right'>{$motivo}</td></tr>
                 </table>
-                <p style='margin:16px 0 0;color:#6b7280;font-size:13px'>
-                    Puedes revisar el historial completo de la caja en el panel.
-                </p>";
+                " . self::boton('Ver la caja en Cosigna', "/#/caja/{$cajaId}");
             if (self::enviar($para, "Gasto aprobado — {$nombreCaja}", $cuerpo)) {
                 $enviados++;
             }
@@ -113,10 +112,11 @@ final class Correo
             <p style='margin:0 0 16px;color:#111827;font-size:15px;line-height:1.6'>
                 Hola <strong>{$nombre}</strong>, tu cuenta en Cosigna quedó lista.
             </p>
-            <p style='margin:0;color:#374151;font-size:14px;line-height:1.6'>
+            <p style='margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6'>
                 Entra con tu correo, revisa las cajas donde eres miembro y aprueba
                 los gastos pendientes con un clic.
-            </p>";
+            </p>
+            " . self::boton('Entrar a Cosigna', '/#/acceso');
 
         return self::enviar($para, 'Bienvenido a Cosigna', $cuerpo);
     }
@@ -130,11 +130,25 @@ final class Correo
             </p>
             <p style='margin:0 0 16px;text-align:center;font-size:32px;font-weight:700;
                       letter-spacing:8px;color:#2563eb'>{$codigo}</p>
-            <p style='margin:0;color:#6b7280;font-size:13px'>
+            <p style='margin:0 0 16px;color:#6b7280;font-size:13px'>
                 Vence en 15 minutos. Si no lo pediste tú, ignora este correo.
-            </p>";
+            </p>
+            " . self::boton('Cambiar mi clave', '/#/acceso');
 
         return self::enviar($para, 'Tu código de Cosigna', $cuerpo);
+    }
+
+    // Boton de accion con link al panel.
+    private static function boton(string $texto, string $ruta): string
+    {
+        $app = rtrim($_ENV['CORREO_APP_URL'] ?? 'https://stellar-demo-frontend.onrender.com', '/');
+        $url = htmlspecialchars($app . $ruta, ENT_QUOTES);
+        $texto = htmlspecialchars($texto, ENT_QUOTES);
+        return "<p style='margin:0;text-align:center'>
+            <a href='{$url}' style='display:inline-block;padding:12px 28px;background:#2563eb;
+               color:#ffffff;font-size:14px;font-weight:600;border-radius:10px;
+               text-decoration:none'>{$texto}</a>
+        </p>";
     }
 
     // Marco de marca: fondo neutro, tarjeta blanca, acento azul del panel.
