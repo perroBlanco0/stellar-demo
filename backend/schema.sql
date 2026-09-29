@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS members (
     caja_id INTEGER NOT NULL REFERENCES cajas(id) ON DELETE CASCADE,
     nombre TEXT NOT NULL,
     public_key TEXT NOT NULL,
+    puede_aprobar BOOLEAN NOT NULL DEFAULT TRUE,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -104,3 +105,7 @@ ALTER TABLE cajas ADD COLUMN IF NOT EXISTS organizacion_id INTEGER REFERENCES or
 -- Migracion para BD existentes: login de usuarios (email + password_hash).
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+-- Migracion para BD existentes: aprobacion ON/OFF y vinculo miembro->usuario.
+ALTER TABLE members ADD COLUMN IF NOT EXISTS puede_aprobar BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuarios(id);

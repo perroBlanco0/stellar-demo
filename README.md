@@ -48,7 +48,8 @@ Response (200):
     "umbral": 2,
     "creado_en": "2026-09-22 13:23:51",
     "members": [
-      { "id": 1, "nombre": "Josue Valenzuela", "public_key": "GB2K..." }
+      { "id": 1, "nombre": "Josue Valenzuela", "public_key": "GB2K...", "puede_aprobar": true, "usuario_id": 3 },
+      { "id": 2, "nombre": "Ana", "public_key": "GANA...", "puede_aprobar": false, "usuario_id": null }
     ]
   }
 }
@@ -72,14 +73,19 @@ Response (200):
 Error: 404 caja_not_found, 404 account_not_found_on_stellar (la caja existe en la BD pero su public_key todavia no tiene cuenta creada/fondeada en Stellar)
 
 POST /cajas/{id}/members
-Request:
+Dos modos. Con claves sueltas (flujo original):
 
 
 { "nombre": "Tomas B.", "public_key": "GASV..." }
+O vinculado a un usuario registrado (usa su nombre y public_key, y guarda el vinculo en usuario_id):
+
+
+{ "usuario_id": 3 }
 Response (201):
 
 
-{ "ok": true, "id": 2 }
+{ "ok": true, "id": 2, "puede_aprobar": true }
+Errores: 400 missing_fields, 404 usuario_not_found (modo usuario_id), 409 miembro_duplicado (modo usuario_id: la public_key del usuario ya es miembro de la caja)
 POST /cajas/{id}/proposals
 Request:
 
@@ -112,6 +118,7 @@ Response (200):
   ]
 }
 POST /proposals/{id}/signatures
+La firma solo se acepta si member_id es miembro de la caja de la propuesta y tiene la aprobacion encendida (puede_aprobar). Las firmas ya emitidas siguen contando aunque despues se apague la aprobacion del miembro: apagar solo bloquea NUEVAS firmas.
 Request:
 
 
@@ -120,6 +127,7 @@ Response (201):
 
 
 { "ok": true }
+Errores: 400 missing_fields, 404 proposal_not_found, 404 member_not_found, 403 aprobacion_desactivada
 
 POST /proposals/{id}/ejecutar
 Cuando ya se juntaron las firmas necesarias (segun umbral de la caja), toma el XDR final guardado y lo envia de verdad a Stellar. Marca la propuesta como "ejecutada".
@@ -150,11 +158,12 @@ Response (200):
 Errores: 401 unauthorized, 403 forbidden, 404 caja_not_found
 
 PUT /cajas/{id}/members/{memberId}
-Misma regla de auth que PUT /cajas/{id}.
+Misma regla de auth que PUT /cajas/{id}. Acepta nombre, puede_aprobar, o ambos (al menos uno requerido).
 Request:
 
 
 { "nombre": "Tomas B." }
+{ "puede_aprobar": false }
 Response (200):
 
 
@@ -262,7 +271,7 @@ Response (200):
 }
 Error: 404 caja_not_found
 
-Tipos de evento: caja_creada, caja_editada, caja_eliminada, miembro_agregado, miembro_editado, miembro_eliminado, propuesta_creada, propuesta_firmada, propuesta_ejecutada, faucet_pedido, usuario_creado, usuario_editado, usuario_eliminado, usuario_login, organizacion_creada, organizacion_editada, organizacion_eliminada, admin_creado, admin_editado, admin_eliminado, admin_login (los que no son de una caja van con caja_id null).
+Tipos de evento: caja_creada, caja_editada, caja_eliminada, miembro_agregado, miembro_editado, miembro_eliminado, miembro_aprobacion_on, miembro_aprobacion_off, propuesta_creada, propuesta_firmada, propuesta_ejecutada, faucet_pedido, usuario_creado, usuario_editado, usuario_eliminado, usuario_login, organizacion_creada, organizacion_editada, organizacion_eliminada, admin_creado, admin_editado, admin_eliminado, admin_login (los que no son de una caja van con caja_id null).
 
 POST /auth/login
 Request:

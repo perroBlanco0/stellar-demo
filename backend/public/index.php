@@ -38,6 +38,8 @@ if ($driver !== 'mysql') {
             'ALTER TABLE cajas ADD COLUMN organizacion_id INTEGER REFERENCES organizaciones(id)',
             'ALTER TABLE usuarios ADD COLUMN email TEXT',
             'ALTER TABLE usuarios ADD COLUMN password_hash TEXT',
+            'ALTER TABLE members ADD COLUMN puede_aprobar INTEGER NOT NULL DEFAULT 1',
+            'ALTER TABLE members ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)',
         ] as $alter) {
             try {
                 $pdo->exec($alter);

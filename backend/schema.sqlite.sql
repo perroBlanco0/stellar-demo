@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS members (
     caja_id INTEGER NOT NULL REFERENCES cajas(id) ON DELETE CASCADE,
     nombre TEXT NOT NULL,
     public_key TEXT NOT NULL,
+    puede_aprobar INTEGER NOT NULL DEFAULT 1,
+    usuario_id INTEGER REFERENCES usuarios(id),
     creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

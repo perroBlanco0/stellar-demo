@@ -84,7 +84,7 @@ final class CajaRoutes
                 $caja['members'] = $membersStmt->fetchAll();
                 $membersStmt->closeCursor();
             } else {
-                $membersStmt = $pdo->prepare('SELECT id, nombre, public_key FROM members WHERE caja_id = ?');
+                $membersStmt = $pdo->prepare('SELECT id, nombre, public_key, puede_aprobar, usuario_id FROM members WHERE caja_id = ?');
                 $membersStmt->execute([$args['id']]);
                 $caja['members'] = $membersStmt->fetchAll();
             }
@@ -94,27 +94,45 @@ final class CajaRoutes
             return $response;
         });
 
+        // POST /cajas/{id}/members — dos modos:
+        // {usuario_id}: vincula un usuario registrado (usa su nombre y
+        // public_key, guarda el vinculo; 409 si su clave ya es miembro).
+        // {nombre, public_key}: claves sueltas, flujo original sin cambios.
         $app->post('/cajas/{id}/members', function (Request $request, Response $response, array $args): Response {
             $body = json_decode((string) $request->getBody(), true) ?? [];
+            $usuarioId = (int) ($body['usuario_id'] ?? 0);
             $nombre = trim((string) ($body['nombre'] ?? ''));
             $publicKey = trim((string) ($body['public_key'] ?? ''));
 
-            if ($nombre === '' || $publicKey === '') {
+            $pdo = Database::connection();
+
+            if ($usuarioId > 0) {
+                $usuario = self::buscarUsuario($pdo, $usuarioId);
+                if (!$usuario) {
+                    return self::jsonError($response, 404, 'usuario_not_found');
+                }
+                $nombre = $usuario['nombre'];
+                $publicKey = $usuario['public_key'];
+
+                if (self::miembroConClave($pdo, (int) $args['id'], $publicKey)) {
+                    return self::jsonError($response, 409, 'miembro_duplicado');
+                }
+            } elseif ($nombre === '' || $publicKey === '') {
                 return self::jsonError($response, 400, 'missing_fields');
             }
 
-            $pdo = Database::connection();
+            $usuarioParam = $usuarioId > 0 ? $usuarioId : null;
 
             if (self::isMysql()) {
-                $stmt = $pdo->prepare('CALL sp_agregar_member(?, ?, ?, @id)');
-                $stmt->execute([$args['id'], $nombre, $publicKey]);
+                $stmt = $pdo->prepare('CALL sp_agregar_member(?, ?, ?, ?, @id)');
+                $stmt->execute([$args['id'], $nombre, $publicKey, $usuarioParam]);
                 $stmt->closeCursor();
                 $id = $pdo->query('SELECT @id AS id')->fetch()['id'];
             } else {
                 $stmt = $pdo->prepare(
-                    'INSERT INTO members (caja_id, nombre, public_key) VALUES (?, ?, ?)'
+                    'INSERT INTO members (caja_id, nombre, public_key, usuario_id) VALUES (?, ?, ?, ?)'
                 );
-                $stmt->execute([$args['id'], $nombre, $publicKey]);
+                $stmt->execute([$args['id'], $nombre, $publicKey, $usuarioParam]);
                 $id = $pdo->lastInsertId();
             }
 
@@ -122,9 +140,10 @@ final class CajaRoutes
                 'member_id' => $id,
                 'nombre' => $nombre,
                 'public_key' => $publicKey,
+                'usuario_id' => $usuarioParam,
             ]);
 
-            $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
+            $response->getBody()->write(json_encode(['ok' => true, 'id' => $id, 'puede_aprobar' => true]));
 
             return $response->withStatus(201);
         });
@@ -212,6 +231,23 @@ final class CajaRoutes
 
             $pdo = Database::connection();
 
+            $stmt = $pdo->prepare('SELECT caja_id FROM proposals WHERE id = ?');
+            $stmt->execute([$args['id']]);
+            $proposal = $stmt->fetch();
+            if (!$proposal) {
+                return self::jsonError($response, 404, 'proposal_not_found');
+            }
+
+            // Solo firmas de miembros de la caja, y solo si su aprobacion
+            // sigue encendida (las firmas ya emitidas siguen contando).
+            $miembro = self::buscarMiembro($pdo, $memberId);
+            if (!$miembro || (int) $miembro['caja_id'] !== (int) $proposal['caja_id']) {
+                return self::jsonError($response, 404, 'member_not_found');
+            }
+            if (!self::aprobacionActiva($miembro)) {
+                return self::jsonError($response, 403, 'aprobacion_desactivada');
+            }
+
             if (self::isMysql()) {
                 $stmt = $pdo->prepare('CALL sp_firmar_proposal(?, ?, ?)');
                 $stmt->execute([$args['id'], $memberId, $xdr]);
@@ -226,9 +262,7 @@ final class CajaRoutes
                 $insert->execute([$args['id'], $memberId]);
             }
 
-            $stmt = $pdo->prepare('SELECT caja_id FROM proposals WHERE id = ?');
-            $stmt->execute([$args['id']]);
-            Eventos::registrar($pdo, (int) $stmt->fetchColumn(), 'propuesta_firmada', [
+            Eventos::registrar($pdo, (int) $proposal['caja_id'], 'propuesta_firmada', [
                 'proposal_id' => $args['id'],
                 'member_id' => $memberId,
             ]);
@@ -325,12 +359,17 @@ final class CajaRoutes
             return $response;
         });
 
-        // PUT /cajas/{id}/members/{memberId} — {nombre}
+        // PUT /cajas/{id}/members/{memberId} — {nombre} y/o {puede_aprobar}.
+        // puede_aprobar en false apaga solo NUEVAS firmas del miembro;
+        // las firmas ya emitidas siguen contando para el umbral.
         $app->put('/cajas/{id}/members/{memberId}', function (Request $request, Response $response, array $args): Response {
             $body = json_decode((string) $request->getBody(), true) ?? [];
             $nombre = trim((string) ($body['nombre'] ?? ''));
+            $cambiarNombre = $nombre !== '';
+            $cambiarAprobacion = array_key_exists('puede_aprobar', $body);
+            $puedeAprobar = (bool) ($body['puede_aprobar'] ?? false);
 
-            if ($nombre === '') {
+            if (!$cambiarNombre && !$cambiarAprobacion) {
                 return self::jsonError($response, 400, 'missing_fields');
             }
 
@@ -344,25 +383,37 @@ final class CajaRoutes
                 return $error;
             }
 
-            $stmt = $pdo->prepare('SELECT id FROM members WHERE id = ? AND caja_id = ?');
-            $stmt->execute([$args['memberId'], $args['id']]);
-            if (!$stmt->fetch()) {
+            $miembro = self::buscarMiembro($pdo, (int) $args['memberId']);
+            if (!$miembro || (int) $miembro['caja_id'] !== (int) $args['id']) {
                 return self::jsonError($response, 404, 'member_not_found');
             }
 
+            $nuevoNombre = $cambiarNombre ? $nombre : $miembro['nombre'];
+            $nuevaAprobacion = $cambiarAprobacion
+                ? $puedeAprobar
+                : self::aprobacionActiva($miembro);
+
             if (self::isMysql()) {
-                $stmt = $pdo->prepare('CALL sp_actualizar_miembro(?, ?)');
-                $stmt->execute([$args['memberId'], $nombre]);
+                $stmt = $pdo->prepare('CALL sp_actualizar_miembro(?, ?, ?)');
+                $stmt->execute([$args['memberId'], $nuevoNombre, $nuevaAprobacion ? 1 : 0]);
                 $stmt->closeCursor();
             } else {
-                $pdo->prepare('UPDATE members SET nombre = ? WHERE id = ?')
-                    ->execute([$nombre, $args['memberId']]);
+                $pdo->prepare('UPDATE members SET nombre = ?, puede_aprobar = ? WHERE id = ?')
+                    ->execute([$nuevoNombre, $nuevaAprobacion ? 1 : 0, $args['memberId']]);
             }
 
-            Eventos::registrar($pdo, (int) $args['id'], 'miembro_editado', [
-                'member_id' => $args['memberId'],
-                'nombre' => $nombre,
-            ]);
+            if ($cambiarNombre) {
+                Eventos::registrar($pdo, (int) $args['id'], 'miembro_editado', [
+                    'member_id' => $args['memberId'],
+                    'nombre' => $nombre,
+                ]);
+            }
+            if ($cambiarAprobacion) {
+                Eventos::registrar($pdo, (int) $args['id'], $puedeAprobar ? 'miembro_aprobacion_on' : 'miembro_aprobacion_off', [
+                    'member_id' => $args['memberId'],
+                    'puede_aprobar' => $puedeAprobar,
+                ]);
+            }
 
             $response->getBody()->write(json_encode(['ok' => true]));
 
@@ -424,6 +475,80 @@ final class CajaRoutes
         $stmt->execute([$id]);
 
         return $stmt->fetch();
+    }
+
+    /**
+     * @return array<string, mixed>|false
+     */
+    private static function buscarMiembro(PDO $pdo, int $id)
+    {
+        if (self::isMysql()) {
+            $stmt = $pdo->prepare('CALL sp_obtener_miembro(?)');
+            $stmt->execute([$id]);
+            $miembro = $stmt->fetch();
+            $stmt->closeCursor();
+
+            return $miembro;
+        }
+
+        $stmt = $pdo->prepare('SELECT * FROM members WHERE id = ?');
+        $stmt->execute([$id]);
+
+        return $stmt->fetch();
+    }
+
+    /**
+     * @return array<string, mixed>|false
+     */
+    private static function buscarUsuario(PDO $pdo, int $id)
+    {
+        if (self::isMysql()) {
+            $stmt = $pdo->prepare('CALL sp_obtener_usuario_por_id(?)');
+            $stmt->execute([$id]);
+            $usuario = $stmt->fetch();
+            $stmt->closeCursor();
+
+            return $usuario;
+        }
+
+        $stmt = $pdo->prepare('SELECT * FROM usuarios WHERE id = ?');
+        $stmt->execute([$id]);
+
+        return $stmt->fetch();
+    }
+
+    private static function miembroConClave(PDO $pdo, int $cajaId, string $publicKey): bool
+    {
+        if (self::isMysql()) {
+            $stmt = $pdo->prepare('CALL sp_listar_members(?)');
+            $stmt->execute([$cajaId]);
+            $members = $stmt->fetchAll();
+            $stmt->closeCursor();
+            foreach ($members as $m) {
+                if ($m['public_key'] === $publicKey) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        $stmt = $pdo->prepare('SELECT id FROM members WHERE caja_id = ? AND public_key = ?');
+        $stmt->execute([$cajaId, $publicKey]);
+
+        return (bool) $stmt->fetch();
+    }
+
+    // Normaliza puede_aprobar: sqlite/mysql devuelven 1/0, pg devuelve
+    // bool o 't'/'f' segun el driver.
+    /**
+     * @param array<string, mixed> $miembro
+     */
+    private static function aprobacionActiva(array $miembro): bool
+    {
+        $v = $miembro['puede_aprobar'] ?? true;
+
+        return $v === true || $v === 1 || $v === '1' || $v === 't' || $v === 'true';
     }
 
     // Mutaciones de caja: admin de la organizacion de la caja, o cualquier

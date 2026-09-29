@@ -26,21 +26,33 @@ END $$
 
 -- ---------- members ----------
 
+-- Cambio de firma (usuario_id para miembros vinculados a usuarios):
+-- hay que borrar el SP viejo antes de recrearlo.
+DROP PROCEDURE IF EXISTS sp_agregar_member $$
 CREATE PROCEDURE sp_agregar_member(
     IN p_caja_id INT,
     IN p_nombre VARCHAR(255),
     IN p_public_key VARCHAR(64),
+    IN p_usuario_id INT,
     OUT p_id INT
 )
 BEGIN
-    INSERT INTO members (caja_id, nombre, public_key)
-    VALUES (p_caja_id, p_nombre, p_public_key);
+    INSERT INTO members (caja_id, nombre, public_key, usuario_id)
+    VALUES (p_caja_id, p_nombre, p_public_key, p_usuario_id);
     SET p_id = LAST_INSERT_ID();
 END $$
 
+-- Cambio de columnas devueltas (puede_aprobar + usuario_id).
+DROP PROCEDURE IF EXISTS sp_listar_members $$
 CREATE PROCEDURE sp_listar_members(IN p_caja_id INT)
 BEGIN
-    SELECT id, nombre, public_key FROM members WHERE caja_id = p_caja_id;
+    SELECT id, nombre, public_key, puede_aprobar, usuario_id
+    FROM members WHERE caja_id = p_caja_id;
+END $$
+
+CREATE PROCEDURE sp_obtener_miembro(IN p_id INT)
+BEGIN
+    SELECT * FROM members WHERE id = p_id;
 END $$
 
 -- ---------- proposals ----------
@@ -111,6 +123,11 @@ BEGIN
     SELECT * FROM usuarios WHERE email = p_email;
 END $$
 
+CREATE PROCEDURE sp_obtener_usuario_por_id(IN p_id INT)
+BEGIN
+    SELECT * FROM usuarios WHERE id = p_id;
+END $$
+
 CREATE PROCEDURE sp_listar_usuarios()
 BEGIN
     SELECT id, nombre, public_key, email, creado_en FROM usuarios ORDER BY id;
@@ -177,12 +194,15 @@ BEGIN
     DELETE FROM cajas WHERE id = p_id;
 END $$
 
+-- Cambio de firma (puede_aprobar para apagar/encender aprobaciones).
+DROP PROCEDURE IF EXISTS sp_actualizar_miembro $$
 CREATE PROCEDURE sp_actualizar_miembro(
     IN p_id INT,
-    IN p_nombre VARCHAR(255)
+    IN p_nombre VARCHAR(255),
+    IN p_puede_aprobar TINYINT
 )
 BEGIN
-    UPDATE members SET nombre = p_nombre WHERE id = p_id;
+    UPDATE members SET nombre = p_nombre, puede_aprobar = p_puede_aprobar WHERE id = p_id;
 END $$
 
 CREATE PROCEDURE sp_eliminar_miembro(IN p_id INT)

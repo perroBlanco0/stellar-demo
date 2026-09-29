@@ -37,13 +37,26 @@ CREATE TABLE IF NOT EXISTS cajas (
     FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id)
 ) ENGINE=InnoDB;
 
+-- Usuarios se crea antes que members porque members.usuario_id la referencia.
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    public_key VARCHAR(64) NOT NULL UNIQUE,
+    email VARCHAR(255),
+    password_hash VARCHAR(255),
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS members (
     id INT AUTO_INCREMENT PRIMARY KEY,
     caja_id INT NOT NULL,
     nombre VARCHAR(255) NOT NULL,
     public_key VARCHAR(64) NOT NULL,
+    puede_aprobar TINYINT(1) NOT NULL DEFAULT 1,
+    usuario_id INT,
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (caja_id) REFERENCES cajas(id) ON DELETE CASCADE
+    FOREIGN KEY (caja_id) REFERENCES cajas(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS proposals (
@@ -65,15 +78,6 @@ CREATE TABLE IF NOT EXISTS proposal_signatures (
     firmado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (proposal_id) REFERENCES proposals(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(255) NOT NULL,
-    public_key VARCHAR(64) NOT NULL UNIQUE,
-    email VARCHAR(255),
-    password_hash VARCHAR(255),
-    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS usuario_sessions (
@@ -105,3 +109,5 @@ CREATE INDEX idx_usuario_sessions_token ON usuario_sessions(token);
 -- ALTER TABLE cajas ADD COLUMN organizacion_id INT, ADD FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id);
 -- y para usuarios sin login:
 -- ALTER TABLE usuarios ADD COLUMN email VARCHAR(255), ADD COLUMN password_hash VARCHAR(255);
+-- y para members sin aprobacion/vinculo a usuario:
+-- ALTER TABLE members ADD COLUMN puede_aprobar TINYINT(1) NOT NULL DEFAULT 1, ADD COLUMN usuario_id INT, ADD FOREIGN KEY (usuario_id) REFERENCES usuarios(id);
