@@ -63,7 +63,16 @@ CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     public_key TEXT NOT NULL UNIQUE,
+    email TEXT,
+    password_hash TEXT,
     creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS usuario_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    expira_en TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS eventos (
@@ -80,3 +89,4 @@ CREATE INDEX IF NOT EXISTS idx_signatures_proposal ON proposal_signatures(propos
 CREATE INDEX IF NOT EXISTS idx_eventos_caja ON eventos(caja_id);
 CREATE INDEX IF NOT EXISTS idx_admin_users_org ON admin_users(organizacion_id);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
+CREATE INDEX IF NOT EXISTS idx_usuario_sessions_token ON usuario_sessions(token);

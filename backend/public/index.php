@@ -31,13 +31,19 @@ if ($driver !== 'mysql') {
     $pdo = Database::connection();
     $pdo->exec(file_get_contents(__DIR__ . '/../' . $schema));
 
-    // SQLite no acepta ADD COLUMN IF NOT EXISTS: migrar cajas a mano.
+    // SQLite no acepta ADD COLUMN IF NOT EXISTS: migrar a mano.
     // Postgres ya lleva su propio ALTER idempotente dentro de schema.sql.
     if ($driver === 'sqlite') {
-        try {
-            $pdo->exec('ALTER TABLE cajas ADD COLUMN organizacion_id INTEGER REFERENCES organizaciones(id)');
-        } catch (\PDOException $e) {
-            // La columna ya existe.
+        foreach ([
+            'ALTER TABLE cajas ADD COLUMN organizacion_id INTEGER REFERENCES organizaciones(id)',
+            'ALTER TABLE usuarios ADD COLUMN email TEXT',
+            'ALTER TABLE usuarios ADD COLUMN password_hash TEXT',
+        ] as $alter) {
+            try {
+                $pdo->exec($alter);
+            } catch (\PDOException $e) {
+                // La columna ya existe.
+            }
         }
     }
 }

@@ -55,6 +55,12 @@ final class AdminRoutes
                     ->execute([$admin['id'], $token, $expira]);
             }
 
+            Eventos::registrar($pdo, null, 'admin_login', [
+                'admin_id' => $admin['id'],
+                'email' => $admin['email'],
+                'organizacion_id' => $admin['organizacion_id'],
+            ]);
+
             $response->getBody()->write(json_encode([
                 'ok' => true,
                 'token' => $token,
@@ -179,6 +185,239 @@ final class AdminRoutes
             }
 
             $response->getBody()->write(json_encode(['ok' => true, 'admins' => $admins]));
+
+            return $response;
+        });
+
+        // GET /organizaciones/{id}/cajas — cajas de la org (solo admin de esa org).
+        $app->get('/organizaciones/{id}/cajas', function (Request $request, Response $response, array $args): Response {
+            $pdo = Database::connection();
+
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_listar_cajas_por_organizacion(?)');
+                $stmt->execute([$args['id']]);
+                $cajas = $stmt->fetchAll();
+                $stmt->closeCursor();
+            } else {
+                $stmt = $pdo->prepare(
+                    'SELECT id, organizacion_id, nombre, curso, public_key, umbral, creado_en
+                     FROM cajas WHERE organizacion_id = ? ORDER BY id'
+                );
+                $stmt->execute([$args['id']]);
+                $cajas = $stmt->fetchAll();
+            }
+
+            $response->getBody()->write(json_encode(['ok' => true, 'cajas' => $cajas]));
+
+            return $response;
+        });
+
+        // PUT /organizaciones/{id} — {nombre} (solo admin de esa org).
+        $app->put('/organizaciones/{id}', function (Request $request, Response $response, array $args): Response {
+            $body = json_decode((string) $request->getBody(), true) ?? [];
+            $nombre = trim((string) ($body['nombre'] ?? ''));
+
+            if ($nombre === '') {
+                return self::jsonError($response, 400, 'missing_fields');
+            }
+
+            $pdo = Database::connection();
+
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_actualizar_organizacion(?, ?)');
+                $stmt->execute([$args['id'], $nombre]);
+                $stmt->closeCursor();
+            } else {
+                $pdo->prepare('UPDATE organizaciones SET nombre = ? WHERE id = ?')
+                    ->execute([$nombre, $args['id']]);
+            }
+
+            Eventos::registrar($pdo, null, 'organizacion_editada', [
+                'organizacion_id' => $args['id'],
+                'nombre' => $nombre,
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
+        // DELETE /organizaciones/{id} — solo si no tiene cajas.
+        // Borra admin_sessions de sus admins, luego admin_users, luego la org.
+        $app->delete('/organizaciones/{id}', function (Request $request, Response $response, array $args): Response {
+            $pdo = Database::connection();
+
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_listar_cajas_por_organizacion(?)');
+                $stmt->execute([$args['id']]);
+                $tieneCajas = count($stmt->fetchAll()) > 0;
+                $stmt->closeCursor();
+            } else {
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM cajas WHERE organizacion_id = ?');
+                $stmt->execute([$args['id']]);
+                $tieneCajas = (int) $stmt->fetchColumn() > 0;
+            }
+
+            if ($tieneCajas) {
+                return self::jsonError($response, 409, 'organizacion_tiene_cajas');
+            }
+
+            $pdo->beginTransaction();
+            try {
+                $pdo->prepare(
+                    'DELETE FROM admin_sessions WHERE admin_user_id IN
+                     (SELECT id FROM admin_users WHERE organizacion_id = ?)'
+                )->execute([$args['id']]);
+                $pdo->prepare('DELETE FROM admin_users WHERE organizacion_id = ?')
+                    ->execute([$args['id']]);
+
+                if (self::isMysql()) {
+                    $stmt = $pdo->prepare('CALL sp_eliminar_organizacion(?)');
+                    $stmt->execute([$args['id']]);
+                    $stmt->closeCursor();
+                } else {
+                    $pdo->prepare('DELETE FROM organizaciones WHERE id = ?')
+                        ->execute([$args['id']]);
+                }
+
+                $pdo->commit();
+            } catch (\Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+
+            Eventos::registrar($pdo, null, 'organizacion_eliminada', [
+                'organizacion_id' => $args['id'],
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
+        // PUT /organizaciones/{id}/admins/{adminId} — {password}
+        // Cambia el password de un admin de la org (solo admin de esa org).
+        $app->put('/organizaciones/{id}/admins/{adminId}', function (Request $request, Response $response, array $args): Response {
+            $body = json_decode((string) $request->getBody(), true) ?? [];
+            $password = (string) ($body['password'] ?? '');
+
+            if ($password === '') {
+                return self::jsonError($response, 400, 'missing_fields');
+            }
+
+            $pdo = Database::connection();
+
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM admin_users WHERE id = ? AND organizacion_id = ?');
+            $stmt->execute([$args['adminId'], $args['id']]);
+            if (!$stmt->fetch()) {
+                return self::jsonError($response, 404, 'admin_not_found');
+            }
+
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_actualizar_admin(?, ?)');
+                $stmt->execute([$args['adminId'], $hash]);
+                $stmt->closeCursor();
+            } else {
+                $pdo->prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?')
+                    ->execute([$hash, $args['adminId']]);
+            }
+
+            Eventos::registrar($pdo, null, 'admin_editado', [
+                'organizacion_id' => $args['id'],
+                'admin_id' => $args['adminId'],
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
+        // DELETE /organizaciones/{id}/admins/{adminId}
+        // No deja a la organizacion sin admins (409 ultimo_admin).
+        $app->delete('/organizaciones/{id}/admins/{adminId}', function (Request $request, Response $response, array $args): Response {
+            $pdo = Database::connection();
+
+            $admin = Auth::admin($pdo, $request);
+            if (!$admin) {
+                return self::jsonError($response, 401, 'unauthorized');
+            }
+            if ((int) $admin['organizacion_id'] !== (int) $args['id']) {
+                return self::jsonError($response, 403, 'forbidden');
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM admin_users WHERE id = ? AND organizacion_id = ?');
+            $stmt->execute([$args['adminId'], $args['id']]);
+            if (!$stmt->fetch()) {
+                return self::jsonError($response, 404, 'admin_not_found');
+            }
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_contar_admins(?)');
+                $stmt->execute([$args['id']]);
+                $total = (int) $stmt->fetch()['total'];
+                $stmt->closeCursor();
+            } else {
+                $stmt = $pdo->prepare('SELECT COUNT(*) FROM admin_users WHERE organizacion_id = ?');
+                $stmt->execute([$args['id']]);
+                $total = (int) $stmt->fetchColumn();
+            }
+
+            if ($total <= 1) {
+                return self::jsonError($response, 409, 'ultimo_admin');
+            }
+
+            $pdo->prepare('DELETE FROM admin_sessions WHERE admin_user_id = ?')
+                ->execute([$args['adminId']]);
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_eliminar_admin(?)');
+                $stmt->execute([$args['adminId']]);
+                $stmt->closeCursor();
+            } else {
+                $pdo->prepare('DELETE FROM admin_users WHERE id = ?')
+                    ->execute([$args['adminId']]);
+            }
+
+            Eventos::registrar($pdo, null, 'admin_eliminado', [
+                'organizacion_id' => $args['id'],
+                'admin_id' => $args['adminId'],
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
 
             return $response;
         });

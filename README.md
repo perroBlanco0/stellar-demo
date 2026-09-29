@@ -129,17 +129,105 @@ Response (200):
 { "ok": true, "hash": "6c14d4bf..." }
 Errores: 404 proposal_not_found, 404 caja_not_found, 409 proposal_already_executed, 409 not_enough_signatures (incluye firmas y umbral), 422 horizon_rejected (con result_codes)
 
-POST /usuarios
-Registra una persona (nombre + clave publica). Si la clave ya existe, devuelve el mismo id con ya_existia: true.
+PUT /cajas/{id}
+Requiere Bearer token de un admin de la organizacion de la caja (o de cualquier admin si la caja no tiene organizacion, legacy).
 Request:
 
 
-{ "nombre": "Tomas B.", "public_key": "GASV..." }
+{ "nombre": "Caja 4to Medio B (renombrada)" }
+Response (200):
+
+
+{ "ok": true }
+Errores: 400 missing_fields, 401 unauthorized, 403 forbidden, 404 caja_not_found
+
+DELETE /cajas/{id}
+Misma regla de auth que PUT /cajas/{id}. Borra primero las firmas de sus propuestas, las propuestas, los miembros y los eventos de la caja, y despues la caja.
+Response (200):
+
+
+{ "ok": true }
+Errores: 401 unauthorized, 403 forbidden, 404 caja_not_found
+
+PUT /cajas/{id}/members/{memberId}
+Misma regla de auth que PUT /cajas/{id}.
+Request:
+
+
+{ "nombre": "Tomas B." }
+Response (200):
+
+
+{ "ok": true }
+Errores: 400 missing_fields, 401 unauthorized, 403 forbidden, 404 caja_not_found, 404 member_not_found
+
+DELETE /cajas/{id}/members/{memberId}
+Misma regla de auth que PUT /cajas/{id}.
+Response (200):
+
+
+{ "ok": true }
+Errores: 401 unauthorized, 403 forbidden, 404 caja_not_found, 404 member_not_found
+
+POST /usuarios
+Registra una persona (nombre + clave publica, email y password opcionales para login). Si la clave ya existe, devuelve el mismo id con ya_existia: true.
+Request:
+
+
+{ "nombre": "Tomas B.", "public_key": "GASV...", "email": "tomas@x.cl", "password": "clave123" }
 Response (201):
 
 
 { "ok": true, "id": 1 }
-Error: 400 missing_fields
+Errores: 400 missing_fields, 409 email_duplicado
+
+GET /usuarios
+Requiere Bearer token de admin (cualquier organizacion).
+Response (200):
+
+
+{ "ok": true, "usuarios": [ { "id": 1, "nombre": "Tomas B.", "public_key": "GASV...", "email": "tomas@x.cl", "creado_en": "2026-09-28 20:00:00" } ] }
+Error: 401 unauthorized
+
+PUT /usuarios/{id}
+Requiere Bearer token de admin.
+Request:
+
+
+{ "nombre": "Tomas B. (editado)" }
+Response (200):
+
+
+{ "ok": true }
+Errores: 400 missing_fields, 401 unauthorized, 404 usuario_not_found
+
+DELETE /usuarios/{id}
+Requiere Bearer token de admin. Borra tambien sus sesiones.
+Response (200):
+
+
+{ "ok": true }
+Errores: 401 unauthorized, 404 usuario_not_found
+
+POST /auth/usuario/login
+Login de usuario (abierto, sin admin). El token se usa como `Authorization: Bearer <token>` en GET /usuarios/me/cajas. Dura 7 dias.
+Request:
+
+
+{ "email": "tomas@x.cl", "password": "clave123" }
+Response (200):
+
+
+{ "ok": true, "token": "1507cc...", "usuario": { "id": 1, "nombre": "Tomas B.", "public_key": "GASV...", "email": "tomas@x.cl" } }
+Errores: 400 missing_fields, 401 credenciales_invalidas
+
+GET /usuarios/me/cajas
+Requiere Bearer token de USUARIO (el de POST /auth/usuario/login, no el de admin). Devuelve las cajas donde el usuario es miembro (match por public_key en members).
+Response (200):
+
+
+{ "ok": true, "cajas": [ { "id": 1, "organizacion_id": 1, "nombre": "Caja 4B", "curso": "4B", "public_key": "GBTC...", "umbral": 2, "creado_en": "..." } ] }
+Error: 401 unauthorized
 
 GET /usuarios/{public_key}
 Response (200):
@@ -174,7 +262,7 @@ Response (200):
 }
 Error: 404 caja_not_found
 
-Tipos de evento: caja_creada, miembro_agregado, propuesta_creada, propuesta_firmada, propuesta_ejecutada, faucet_pedido, usuario_creado, organizacion_creada, admin_creado (los ultimos con caja_id null).
+Tipos de evento: caja_creada, caja_editada, caja_eliminada, miembro_agregado, miembro_editado, miembro_eliminado, propuesta_creada, propuesta_firmada, propuesta_ejecutada, faucet_pedido, usuario_creado, usuario_editado, usuario_eliminado, usuario_login, organizacion_creada, organizacion_editada, organizacion_eliminada, admin_creado, admin_editado, admin_eliminado, admin_login (los que no son de una caja van con caja_id null).
 
 POST /auth/login
 Request:
@@ -220,6 +308,55 @@ Response (200):
 { "ok": true, "admins": [ { "id": 1, "organizacion_id": 1, "email": "admin@curso.cl", "creado_en": "2026-09-28 20:49:32" } ] }
 Errores: 401 unauthorized, 403 forbidden
 
+PUT /organizaciones/{id}/admins/{adminId}
+Cambia el password de un admin de la organizacion. Requiere Bearer token de un admin DE ESA organizacion.
+Request:
+
+
+{ "password": "nueva12345" }
+Response (200):
+
+
+{ "ok": true }
+Errores: 400 missing_fields, 401 unauthorized, 403 forbidden, 404 admin_not_found
+
+DELETE /organizaciones/{id}/admins/{adminId}
+Requiere Bearer token de un admin de esa organizacion. No deja a la organizacion sin admins.
+Response (200):
+
+
+{ "ok": true }
+Errores: 401 unauthorized, 403 forbidden, 404 admin_not_found, 409 ultimo_admin
+
+GET /organizaciones/{id}/cajas
+Requiere Bearer token de un admin de esa organizacion.
+Response (200):
+
+
+{ "ok": true, "cajas": [ { "id": 1, "organizacion_id": 1, "nombre": "Caja 4B", "curso": "4B", "public_key": "GBTC...", "umbral": 2, "creado_en": "..." } ] }
+Errores: 401 unauthorized, 403 forbidden
+
+PUT /organizaciones/{id}
+Requiere Bearer token de un admin de esa organizacion.
+Request:
+
+
+{ "nombre": "Curso 4to Medio B (renombrado)" }
+Response (200):
+
+
+{ "ok": true }
+Errores: 400 missing_fields, 401 unauthorized, 403 forbidden
+
+DELETE /organizaciones/{id}
+Requiere Bearer token de un admin de esa organizacion. Solo borra si la organizacion no tiene cajas; si tiene, responde 409. Al borrar elimina las sesiones y los admins de la org.
+Response (200):
+
+
+{ "ok": true }
+Errores: 401 unauthorized, 403 forbidden, 409 organizacion_tiene_cajas
+
 Que requiere login y que no:
-- CON login (Bearer token): POST /cajas, POST /organizaciones/{id}/admins, GET /organizaciones/{id}/admins.
-- SIN login (no rompe el flujo del miembro que aprueba gastos): GET /cajas/{id}, GET /cajas/{id}/estado, GET /cajas/{id}/proposals, GET /cajas/{id}/trazabilidad, POST /cajas/{id}/members, POST /cajas/{id}/proposals, POST /proposals/{id}/signatures, POST /proposals/{id}/ejecutar, POST /faucet, POST /usuarios, GET /usuarios/{public_key}, POST /organizaciones, POST /auth/login.
+- CON login de admin (Bearer token de POST /auth/login): POST /cajas, PUT /cajas/{id}, DELETE /cajas/{id}, PUT /cajas/{id}/members/{memberId}, DELETE /cajas/{id}/members/{memberId}, GET /usuarios, PUT /usuarios/{id}, DELETE /usuarios/{id}, POST /organizaciones/{id}/admins, GET /organizaciones/{id}/admins, PUT /organizaciones/{id}/admins/{adminId}, DELETE /organizaciones/{id}/admins/{adminId}, GET /organizaciones/{id}/cajas, PUT /organizaciones/{id}, DELETE /organizaciones/{id}.
+- CON login de usuario (Bearer token de POST /auth/usuario/login): GET /usuarios/me/cajas.
+- SIN login (no rompe el flujo del miembro que aprueba gastos): GET /cajas/{id}, GET /cajas/{id}/estado, GET /cajas/{id}/proposals, GET /cajas/{id}/trazabilidad, POST /cajas/{id}/members, POST /cajas/{id}/proposals, POST /proposals/{id}/signatures, POST /proposals/{id}/ejecutar, POST /faucet, POST /usuarios, GET /usuarios/{public_key}, POST /organizaciones, POST /auth/login, POST /auth/usuario/login.

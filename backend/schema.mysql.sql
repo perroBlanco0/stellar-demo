@@ -71,7 +71,17 @@ CREATE TABLE IF NOT EXISTS usuarios (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nombre VARCHAR(255) NOT NULL,
     public_key VARCHAR(64) NOT NULL UNIQUE,
+    email VARCHAR(255),
+    password_hash VARCHAR(255),
     creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS usuario_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    usuario_id INT NOT NULL,
+    token VARCHAR(128) NOT NULL UNIQUE,
+    expira_en TIMESTAMP NOT NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS eventos (
@@ -89,6 +99,9 @@ CREATE INDEX idx_signatures_proposal ON proposal_signatures(proposal_id);
 CREATE INDEX idx_eventos_caja ON eventos(caja_id);
 CREATE INDEX idx_admin_users_org ON admin_users(organizacion_id);
 CREATE INDEX idx_admin_sessions_token ON admin_sessions(token);
+CREATE INDEX idx_usuario_sessions_token ON usuario_sessions(token);
 
 -- Migracion para BD existentes (correr una vez si cajas ya existe sin la columna):
 -- ALTER TABLE cajas ADD COLUMN organizacion_id INT, ADD FOREIGN KEY (organizacion_id) REFERENCES organizaciones(id);
+-- y para usuarios sin login:
+-- ALTER TABLE usuarios ADD COLUMN email VARCHAR(255), ADD COLUMN password_hash VARCHAR(255);

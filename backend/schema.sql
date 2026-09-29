@@ -62,11 +62,23 @@ CREATE TABLE IF NOT EXISTS proposal_signatures (
 );
 
 -- Personas que usan la app; un usuario puede ser member de varias cajas.
+-- email + password_hash son opcionales: solo los usuarios que se
+-- auto-registran con login los tienen (email unico se valida en codigo).
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     nombre TEXT NOT NULL,
     public_key TEXT NOT NULL UNIQUE,
+    email TEXT,
+    password_hash TEXT,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Sesiones de usuario (login con Bearer token, igual que admin_sessions).
+CREATE TABLE IF NOT EXISTS usuario_sessions (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    expira_en TIMESTAMPTZ NOT NULL
 );
 
 -- Trazabilidad: cada accion relevante queda registrada con su contexto.
@@ -84,6 +96,11 @@ CREATE INDEX IF NOT EXISTS idx_signatures_proposal ON proposal_signatures(propos
 CREATE INDEX IF NOT EXISTS idx_eventos_caja ON eventos(caja_id);
 CREATE INDEX IF NOT EXISTS idx_admin_users_org ON admin_users(organizacion_id);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
+CREATE INDEX IF NOT EXISTS idx_usuario_sessions_token ON usuario_sessions(token);
 
 -- Migracion para BD existentes: agrega organizacion_id a cajas si falta.
 ALTER TABLE cajas ADD COLUMN IF NOT EXISTS organizacion_id INTEGER REFERENCES organizaciones(id);
+
+-- Migracion para BD existentes: login de usuarios (email + password_hash).
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash TEXT;

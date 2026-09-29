@@ -41,6 +41,39 @@ final class Auth
         return $admin ?: null;
     }
 
+    /**
+     * Devuelve {id, nombre, public_key, email} del usuario autenticado, o null.
+     * Mismo patron que admin(): sesiones en usuario_sessions con expira_en.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function usuario(PDO $pdo, Request $request): ?array
+    {
+        if (!preg_match('/Bearer\s+(\S+)/i', $request->getHeaderLine('Authorization'), $m)) {
+            return null;
+        }
+
+        if (self::isMysql()) {
+            $stmt = $pdo->prepare('CALL sp_obtener_sesion_usuario_por_token(?)');
+            $stmt->execute([$m[1]]);
+            $usuario = $stmt->fetch();
+            $stmt->closeCursor();
+
+            return $usuario ?: null;
+        }
+
+        $stmt = $pdo->prepare(
+            'SELECT u.id, u.nombre, u.public_key, u.email
+             FROM usuario_sessions s
+             JOIN usuarios u ON u.id = s.usuario_id
+             WHERE s.token = ? AND s.expira_en > CURRENT_TIMESTAMP'
+        );
+        $stmt->execute([$m[1]]);
+        $usuario = $stmt->fetch();
+
+        return $usuario ?: null;
+    }
+
     private static function isMysql(): bool
     {
         return ($_ENV['DB_DRIVER'] ?? 'pgsql') === 'mysql';

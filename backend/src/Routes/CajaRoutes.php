@@ -237,6 +237,213 @@ final class CajaRoutes
 
             return $response->withStatus(201);
         });
+
+        // PUT /cajas/{id} — {nombre}
+        // Solo un admin de la organizacion de la caja (o cualquier admin si
+        // la caja no tiene organizacion, legacy).
+        $app->put('/cajas/{id}', function (Request $request, Response $response, array $args): Response {
+            $body = json_decode((string) $request->getBody(), true) ?? [];
+            $nombre = trim((string) ($body['nombre'] ?? ''));
+
+            if ($nombre === '') {
+                return self::jsonError($response, 400, 'missing_fields');
+            }
+
+            $pdo = Database::connection();
+
+            $caja = self::buscarCaja($pdo, $args['id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_actualizar_caja(?, ?)');
+                $stmt->execute([$args['id'], $nombre]);
+                $stmt->closeCursor();
+            } else {
+                $pdo->prepare('UPDATE cajas SET nombre = ? WHERE id = ?')
+                    ->execute([$nombre, $args['id']]);
+            }
+
+            Eventos::registrar($pdo, (int) $args['id'], 'caja_editada', [
+                'nombre' => $nombre,
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
+        // DELETE /cajas/{id} — borra hijos primero (signatures de sus
+        // proposals, proposals, members, eventos) y despues la caja.
+        $app->delete('/cajas/{id}', function (Request $request, Response $response, array $args): Response {
+            $pdo = Database::connection();
+
+            $caja = self::buscarCaja($pdo, $args['id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+
+            $pdo->beginTransaction();
+            try {
+                $pdo->prepare(
+                    'DELETE FROM proposal_signatures WHERE proposal_id IN
+                     (SELECT id FROM proposals WHERE caja_id = ?)'
+                )->execute([$args['id']]);
+                $pdo->prepare('DELETE FROM proposals WHERE caja_id = ?')->execute([$args['id']]);
+                $pdo->prepare('DELETE FROM members WHERE caja_id = ?')->execute([$args['id']]);
+                $pdo->prepare('DELETE FROM eventos WHERE caja_id = ?')->execute([$args['id']]);
+
+                if (self::isMysql()) {
+                    $stmt = $pdo->prepare('CALL sp_eliminar_caja(?)');
+                    $stmt->execute([$args['id']]);
+                    $stmt->closeCursor();
+                } else {
+                    $pdo->prepare('DELETE FROM cajas WHERE id = ?')->execute([$args['id']]);
+                }
+
+                $pdo->commit();
+            } catch (\Throwable $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+
+            // Con caja_id null para que no se lo lleve el borrado de la caja.
+            Eventos::registrar($pdo, null, 'caja_eliminada', [
+                'caja_id' => $args['id'],
+                'nombre' => $caja['nombre'],
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
+        // PUT /cajas/{id}/members/{memberId} — {nombre}
+        $app->put('/cajas/{id}/members/{memberId}', function (Request $request, Response $response, array $args): Response {
+            $body = json_decode((string) $request->getBody(), true) ?? [];
+            $nombre = trim((string) ($body['nombre'] ?? ''));
+
+            if ($nombre === '') {
+                return self::jsonError($response, 400, 'missing_fields');
+            }
+
+            $pdo = Database::connection();
+
+            $caja = self::buscarCaja($pdo, $args['id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM members WHERE id = ? AND caja_id = ?');
+            $stmt->execute([$args['memberId'], $args['id']]);
+            if (!$stmt->fetch()) {
+                return self::jsonError($response, 404, 'member_not_found');
+            }
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_actualizar_miembro(?, ?)');
+                $stmt->execute([$args['memberId'], $nombre]);
+                $stmt->closeCursor();
+            } else {
+                $pdo->prepare('UPDATE members SET nombre = ? WHERE id = ?')
+                    ->execute([$nombre, $args['memberId']]);
+            }
+
+            Eventos::registrar($pdo, (int) $args['id'], 'miembro_editado', [
+                'member_id' => $args['memberId'],
+                'nombre' => $nombre,
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
+        // DELETE /cajas/{id}/members/{memberId}
+        $app->delete('/cajas/{id}/members/{memberId}', function (Request $request, Response $response, array $args): Response {
+            $pdo = Database::connection();
+
+            $caja = self::buscarCaja($pdo, $args['id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+
+            $stmt = $pdo->prepare('SELECT id FROM members WHERE id = ? AND caja_id = ?');
+            $stmt->execute([$args['memberId'], $args['id']]);
+            if (!$stmt->fetch()) {
+                return self::jsonError($response, 404, 'member_not_found');
+            }
+
+            if (self::isMysql()) {
+                $stmt = $pdo->prepare('CALL sp_eliminar_miembro(?)');
+                $stmt->execute([$args['memberId']]);
+                $stmt->closeCursor();
+            } else {
+                $pdo->prepare('DELETE FROM members WHERE id = ?')
+                    ->execute([$args['memberId']]);
+            }
+
+            Eventos::registrar($pdo, (int) $args['id'], 'miembro_eliminado', [
+                'member_id' => $args['memberId'],
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+    }
+
+    /**
+     * @return array<string, mixed>|false
+     */
+    private static function buscarCaja(PDO $pdo, string $id)
+    {
+        if (self::isMysql()) {
+            $stmt = $pdo->prepare('CALL sp_obtener_caja(?)');
+            $stmt->execute([$id]);
+            $caja = $stmt->fetch();
+            $stmt->closeCursor();
+
+            return $caja;
+        }
+
+        $stmt = $pdo->prepare('SELECT * FROM cajas WHERE id = ?');
+        $stmt->execute([$id]);
+
+        return $stmt->fetch();
+    }
+
+    // Mutaciones de caja: admin de la organizacion de la caja, o cualquier
+    // admin si la caja no tiene organizacion_id (legacy). Null = autorizado.
+    /**
+     * @param array<string, mixed> $caja
+     */
+    private static function checkCajaAdmin(PDO $pdo, Request $request, Response $response, array $caja): ?Response
+    {
+        $admin = Auth::admin($pdo, $request);
+        if (!$admin) {
+            return self::jsonError($response, 401, 'unauthorized');
+        }
+        if ($caja['organizacion_id'] !== null
+            && (int) $caja['organizacion_id'] !== (int) $admin['organizacion_id']
+        ) {
+            return self::jsonError($response, 403, 'forbidden');
+        }
+
+        return null;
     }
 
     private static function isMysql(): bool
