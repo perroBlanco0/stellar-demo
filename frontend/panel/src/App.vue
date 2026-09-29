@@ -7,9 +7,12 @@ import Admin from './Admin.vue';
 import Acceso from './Acceso.vue';
 import MisCajas from './MisCajas.vue';
 
-// Ruteo mínimo por hash: #/ -> inicio, #/caja/ID -> detalle. Sin vue-router.
+// Ruteo mínimo por hash: #/ -> inicio, #/caja/ID -> detalle,
+// #/config/SECCION -> configuración (admins, cajas, usuarios, organizacion).
+// Sin vue-router.
 const vista = ref('inicio');
 const cajaId = ref(0);
+const seccionConfig = ref('admins');
 const despertando = ref(true);
 
 function parsearHash() {
@@ -18,7 +21,12 @@ function parsearHash() {
     cajaId.value = Number(m[1]);
     vista.value = 'caja';
   } else if (location.hash.startsWith('#/admin')) {
-    vista.value = 'admin';
+    // Dirección antigua de Administración: queda como alias de Configuración.
+    location.hash = '#/config';
+  } else if (location.hash.startsWith('#/config')) {
+    const s = location.hash.match(/^#\/config\/(\w+)/);
+    seccionConfig.value = s ? s[1] : 'admins';
+    vista.value = 'config';
   } else if (location.hash.startsWith('#/acceso')) {
     vista.value = 'acceso';
   } else if (location.hash.startsWith('#/mis-cajas')) {
@@ -42,7 +50,7 @@ onMounted(() => {
     Conectando con el servicio&hellip; la primera carga puede tardar ~1 minuto.
   </div>
   <Inicio v-if="vista === 'inicio'" :despertando="despertando" />
-  <Admin v-else-if="vista === 'admin'" />
+  <Admin v-else-if="vista === 'config'" :seccion="seccionConfig" />
   <Acceso v-else-if="vista === 'acceso'" />
   <MisCajas v-else-if="vista === 'miscajas'" />
   <Caja v-else :id="cajaId" :key="cajaId" :despertando="despertando" />

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import {
   entrarAdmin, crearOrganizacion, agregarAdmin, listarAdmins,
   actualizarAdmin, eliminarAdmin, listarCajasOrganizacion,
@@ -8,9 +8,17 @@ import {
 } from './api';
 import { confirmar, listo, falla, avisar, pedirTexto } from './avisos';
 
-// Sección de administración: distinta del flujo de aprobación de gastos.
+// Configuración: distinta del flujo de aprobación de gastos.
 // Aquí entra quien administra una organización (crea cajas, agrega admins),
 // no el miembro que solo aprueba gastos en una caja.
+
+// La sección viene de la URL (#/config/SECCION): el menú del sidebar
+// enlaza directo a cada parte de esta vista.
+const props = defineProps({ seccion: { type: String, default: 'admins' } });
+// URL -> pestaña interna (admins, cajas, usuarios, organizacion -> org)
+const SECCIONES = { admins: 'admins', cajas: 'cajas', usuarios: 'usuarios', organizacion: 'org' };
+// pestaña interna -> URL
+const RUTAS = { admins: 'admins', cajas: 'cajas', usuarios: 'usuarios', org: 'organizacion' };
 
 const email = ref('');
 const password = ref('');
@@ -18,7 +26,7 @@ const sesion = ref(null); // { token, email, organizacion_id }
 const cargando = ref(false);
 
 // Pestañas del panel con sesión: admins | cajas | usuarios | org
-const pestana = ref('admins');
+const pestana = ref(SECCIONES[props.seccion] || 'admins');
 const admins = ref([]);
 const cajas = ref([]);
 const usuarios = ref([]);
@@ -77,7 +85,7 @@ function textoError(codigo) {
     unauthorized: 'La sesión venció. Entra de nuevo.',
     forbidden: 'No perteneces a esa organización.',
     ultimo_admin: 'No puedes eliminar al último administrador de la organización.',
-    organizacion_tiene_cajas: 'La organización todavía tiene cajas: elimínalas primero desde la pestaña Cajas.',
+    organizacion_tiene_cajas: 'La organización todavía tiene cajas: elimínalas primero desde la sección Cajas.',
     caja_not_found: 'No se encontró la caja.',
     usuario_not_found: 'No se encontró el usuario.',
     sin_conexion: 'Sin conexión con el servicio. Intenta de nuevo.',
@@ -161,12 +169,25 @@ async function cargarUsuarios() {
   }
 }
 
-function cambiarPestana(p) {
-  pestana.value = p;
+function cargarPestana(p) {
   if (p === 'admins') cargarAdmins();
   else if (p === 'cajas') cargarCajas();
   else if (p === 'usuarios') cargarUsuarios();
 }
+
+function cambiarPestana(p) {
+  if (pestana.value === p) return;
+  pestana.value = p;
+  // La pestaña queda en la URL: el menú enlaza directo a cada sección.
+  location.hash = '#/config/' + RUTAS[p];
+  cargarPestana(p);
+}
+
+// El menú del sidebar cambia la URL; aquí seguimos la sección pedida.
+watch(
+  () => props.seccion,
+  (s) => cambiarPestana(SECCIONES[s] || 'admins')
+);
 
 // ---- Admins ----
 async function agregar() {
@@ -338,13 +359,13 @@ async function quitarOrganizacion() {
 
 onMounted(() => {
   cargarSesion();
-  cargarAdmins();
+  cargarPestana(pestana.value);
 });
 </script>
 
 <template>
   <div class="pagina">
-    <h1 class="titulo">Administración</h1>
+    <h1 class="titulo">Configuración</h1>
     <p class="subtitulo">
       Las organizaciones administran sus cajas. Solo un administrador puede crear
       cajas nuevas o agregar más administradores. El acceso es por correo y contraseña.
@@ -401,7 +422,7 @@ onMounted(() => {
       </div>
 
       <div class="nav-pestanas">
-        <button :class="{ activo: pestana === 'admins' }" @click="cambiarPestana('admins')">Admins</button>
+        <button :class="{ activo: pestana === 'admins' }" @click="cambiarPestana('admins')">Administradores</button>
         <button :class="{ activo: pestana === 'cajas' }" @click="cambiarPestana('cajas')">Cajas</button>
         <button :class="{ activo: pestana === 'usuarios' }" @click="cambiarPestana('usuarios')">Usuarios</button>
         <button :class="{ activo: pestana === 'org' }" @click="cambiarPestana('org')">Organización</button>
@@ -515,7 +536,7 @@ onMounted(() => {
           <h6 class="mb-2">Zona delicada</h6>
           <p class="texto-2 mb-3">
             Eliminar la organización borra también a sus administradores. Primero debes
-            eliminar sus cajas desde la pestaña Cajas.
+            eliminar sus cajas desde la sección Cajas.
           </p>
           <button class="btn btn-outline-danger btn-sm" @click="quitarOrganizacion">
             Eliminar organización

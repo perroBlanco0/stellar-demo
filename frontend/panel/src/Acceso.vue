@@ -1,11 +1,11 @@
 <script setup>
 import { ref } from 'vue';
-import { entrarAdmin, entrarUsuario, crearUsuario } from './api';
+import { entrarAdmin, entrarUsuario, crearUsuario, recuperarClave, cambiarClave } from './api';
 import { generarClaves } from './stellar';
 import { confirmar, listo, falla, avisar } from './avisos';
 
-// Entrada unificada: administradores entran a #/admin y los usuarios
-// (miembros de cajas) a #/mis-cajas. Abajo, el registro de usuarios.
+// Entrada unificada: administradores entran a #/config y los usuarios
+// (miembros de cajas) a #/mis-cajas. Abajo, recuperar clave y registro.
 const cargando = ref(false);
 
 // Administrador
@@ -21,10 +21,18 @@ const regNombre = ref('');
 const regEmail = ref('');
 const regPassword = ref('');
 
+// Recuperar clave por código al correo (sirve para usuarios y admins).
+// recPaso: 0 = formulario oculto, 1 = pedir el código, 2 = cambiar la clave.
+const recPaso = ref(0);
+const recEmail = ref('');
+const recCodigo = ref('');
+const recPassword = ref('');
+
 function textoError(codigo) {
   const mapa = {
     missing_fields: 'Completa todos los campos.',
     credenciales_invalidas: 'Correo o contraseña incorrectos.',
+    codigo_invalido: 'El código no coincide o ya venció. Pide uno nuevo.',
     email_duplicado: 'Ese correo ya está registrado.',
     email_ya_registrado: 'Ese correo ya está registrado.',
     unauthorized: 'La sesión venció. Entra de nuevo.',
@@ -48,7 +56,7 @@ async function entrarComoAdmin() {
       JSON.stringify({ token: r.datos.token, email: r.datos.email, organizacion_id: r.datos.organizacion_id })
     );
     await listo('Sesión iniciada', 'Ya puedes administrar tu organización.', false);
-    location.hash = '#/admin';
+    location.hash = '#/config';
   } finally {
     cargando.value = false;
   }
@@ -114,6 +122,58 @@ async function registrar() {
     cargando.value = false;
   }
 }
+
+async function pedirCodigo() {
+  if (!recEmail.value.trim()) {
+    avisar('Falta el correo', 'Escribe el correo de tu cuenta.');
+    return;
+  }
+  cargando.value = true;
+  try {
+    const r = await recuperarClave(recEmail.value.trim());
+    if (!r.datos.ok) {
+      falla('No se pudo', textoError(r.datos.error));
+      return;
+    }
+    // El backend siempre responde ok para no revelar si el correo existe.
+    await listo(
+      'Revisa tu correo',
+      'Si el correo está registrado te llegó un código de 6 dígitos (vence en 15 minutos).',
+      false
+    );
+    recPaso.value = 2;
+  } finally {
+    cargando.value = false;
+  }
+}
+
+async function cambiar() {
+  if (!recEmail.value.trim() || !recCodigo.value.trim() || !recPassword.value) {
+    avisar('Faltan datos', 'Completa correo, código y contraseña nueva.');
+    return;
+  }
+  const quiere = await confirmar('¿Cambiar la clave?', 'Tendrás que entrar de nuevo con la clave nueva.');
+  if (!quiere) return;
+  cargando.value = true;
+  try {
+    const r = await cambiarClave(recEmail.value.trim(), recCodigo.value.trim(), recPassword.value);
+    if (!r.datos.ok) {
+      falla('No se pudo', textoError(r.datos.error));
+      return;
+    }
+    // Sin recargar: volvemos al login con el correo ya escrito.
+    const correo = recEmail.value.trim();
+    recPaso.value = 0;
+    recEmail.value = '';
+    recCodigo.value = '';
+    recPassword.value = '';
+    email.value = correo;
+    adminEmail.value = correo;
+    await listo('Clave actualizada', 'Ya puedes entrar con tu contraseña nueva.', false);
+  } finally {
+    cargando.value = false;
+  }
+}
 </script>
 
 <template>
@@ -158,6 +218,53 @@ async function registrar() {
           <button class="btn-acento" :disabled="cargando" @click="entrarComoUsuario">
             {{ cargando ? 'Entrando…' : 'Entrar' }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <p class="mb-3">
+      <a href="#/acceso" class="texto-secundario" @click.prevent="recPaso = 1">
+        ¿Olvidaste tu clave?
+      </a>
+    </p>
+
+    <div v-if="recPaso" class="card tarjeta">
+      <div class="card-body">
+        <h5 class="mb-1">Recuperar clave</h5>
+        <p class="texto-2 mb-3">
+          {{ recPaso === 1
+            ? 'Te enviamos un código de 6 dígitos al correo de tu cuenta.'
+            : 'Escribe el código que llegó a tu correo y elige una contraseña nueva.' }}
+        </p>
+        <div v-if="recPaso === 1" class="row g-2 align-items-end">
+          <div class="col-md-8">
+            <label class="form-label">Correo</label>
+            <input v-model="recEmail" type="email" class="form-control" placeholder="tu@ejemplo.cl" @keyup.enter="pedirCodigo" />
+          </div>
+          <div class="col-md-4">
+            <button class="btn-acento-outline w-100" :disabled="cargando" @click="pedirCodigo">
+              {{ cargando ? 'Enviando…' : 'Enviar código' }}
+            </button>
+          </div>
+        </div>
+        <div v-else class="row g-2 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label">Correo</label>
+            <input v-model="recEmail" type="email" class="form-control" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Código</label>
+            <input v-model="recCodigo" class="form-control" placeholder="123456" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Contraseña nueva</label>
+            <input v-model="recPassword" type="password" class="form-control" @keyup.enter="cambiar" />
+          </div>
+          <div class="col-md-2">
+            <button class="btn-acento w-100" :disabled="cargando" @click="cambiar">
+              {{ cargando ? 'Cambiando…' : 'Cambiar' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

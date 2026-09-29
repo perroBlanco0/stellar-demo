@@ -6,7 +6,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://stellar-demo-backend.onrender.com',
+        // VITE_API_TARGET permite apuntar a un backend local (ej. http://localhost:8000).
+        target: process.env.VITE_API_TARGET || 'https://stellar-demo-backend.onrender.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

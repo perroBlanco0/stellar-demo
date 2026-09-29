@@ -36,12 +36,16 @@ body {
 }
 
 .marca {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-size: 17px;
   font-weight: 600;
   color: var(--texto);
   text-decoration: none;
 }
 .marca:hover { color: var(--acento); }
+.marca-logo { width: 26px; height: 26px; }
 
 .header-nota {
   color: var(--texto-2);
@@ -93,6 +97,7 @@ body {
 .sidebar-link.activo { background: var(--acento-suave); color: var(--acento); font-weight: 600; }
 .sidebar-vacio { padding: 7px 10px; font-size: 13px; color: var(--texto-2); }
 .sidebar-caja { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-sub { padding-left: 22px; font-size: 13.5px; }
 
 .app-main {
   margin-left: var(--ancho-sidebar);
@@ -113,6 +118,13 @@ body {
   border-top: 1px solid var(--borde);
   z-index: 1040;
 }
+
+/* ---- Hero de marca (Inicio) ---- */
+.hero { text-align: center; margin-bottom: 30px; }
+.hero-logo { width: 84px; height: 84px; }
+.hero-nombre { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 12px 0 4px; }
+.hero-tagline { color: var(--acento); font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.hero-linea { color: var(--texto-2); font-size: 14.5px; margin-bottom: 0; }
 
 /* ---- Página y tarjetas ---- */
 .pagina { max-width: 960px; margin: 0 auto; }

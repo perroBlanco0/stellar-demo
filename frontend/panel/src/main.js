@@ -24,6 +24,20 @@ function pintarLista(lista) {
   }
 }
 
+// Marca activo el enlace del menú que calza con la ruta actual.
+function pintarActivos() {
+  // '#/config' a secas muestra Administradores (su sección por defecto).
+  const hash = (location.hash || '#/') === '#/config' ? '#/config/admins' : (location.hash || '#/');
+  $('.sidebar-link').each(function () {
+    const href = $(this).attr('href') || '';
+    const activo =
+      href === '#/'
+        ? hash === '#/' || hash === '' || hash === '#'
+        : hash === href;
+    $(this).toggleClass('activo', activo);
+  });
+}
+
 // Sin sesión: la lista de siempre, desde localStorage.
 function pintarLocal() {
   $('#sidebar-titulo-cajas').text('Cajas recientes');
@@ -60,12 +74,14 @@ $(function () {
   // Al navegar: repintar activos y cerrar el menú en móvil.
   $(window).on('hashchange', function () {
     $('body').removeClass('sidebar-open');
+    pintarActivos();
     pintarRecientes();
   });
 
   // Vue avisa cuando cambia la lista de recientes (al abrir una caja).
   window.addEventListener('cajas-recientes-cambio', pintarRecientes);
 
+  pintarActivos();
   pintarRecientes();
 });
 

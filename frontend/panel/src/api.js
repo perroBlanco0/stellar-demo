@@ -80,5 +80,10 @@ export const entrarUsuario = (email, password) =>
   req('POST', '/auth/usuario/login', { email, password });
 export const misCajas = () => req('GET', '/usuarios/me/cajas', undefined, 'usuario_token');
 
+// Recuperar clave por código al correo (sirve para usuarios y admins).
+export const recuperarClave = (email) => req('POST', '/auth/recuperar', { email });
+export const cambiarClave = (email, codigo, password) =>
+  req('POST', '/auth/cambiar-clave', { email, codigo, password });
+
 // Historial de acciones de una caja (lectura pública).
 export const listarTrazabilidad = (cajaId) => req('GET', `/cajas/${cajaId}/trazabilidad`);

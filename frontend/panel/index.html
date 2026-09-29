@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Panel de Cajas</title>
+  <title>Cosigna</title>
+  <link rel="icon" type="image/png" href="/logo.png" />
   <!-- SDK para firmar las aprobaciones en el navegador (el usuario nunca ve esto) -->
   <script src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js"></script>
 </head>
@@ -12,14 +13,20 @@
     <!-- Chrome del template: este bloque es de jQuery, Vue no lo toca -->
     <nav class="app-header">
       <button id="btn-menu" class="btn-menu" aria-label="Menú">&#9776;</button>
-      <a class="marca" href="#/">Panel de Cajas</a>
-      <span class="header-nota">gastos con aprobación colectiva</span>
+      <a class="marca" href="#/"><img class="marca-logo" src="/logo.png" alt="Cosigna" />Cosigna</a>
+      <span class="header-nota">Tesorerías colectivas con aprobación compartida</span>
     </nav>
 
     <aside class="app-sidebar">
-      <div class="sidebar-titulo">Navegación</div>
-      <a class="sidebar-link" href="#/">Inicio</a>
+      <div class="sidebar-titulo">Funcional</div>
+      <a class="sidebar-link" href="#/">Cajas</a>
+      <a class="sidebar-link" href="#/mis-cajas">Mis cajas</a>
       <a class="sidebar-link" href="#/acceso">Acceso</a>
+      <div class="sidebar-titulo mt-3">Configuración</div>
+      <a class="sidebar-link sidebar-sub" href="#/config/admins">Administradores</a>
+      <a class="sidebar-link sidebar-sub" href="#/config/cajas">Cajas</a>
+      <a class="sidebar-link sidebar-sub" href="#/config/usuarios">Usuarios</a>
+      <a class="sidebar-link sidebar-sub" href="#/config/organizacion">Organización</a>
       <div class="sidebar-titulo mt-3" id="sidebar-titulo-cajas">Cajas recientes</div>
       <div id="cajas-recientes"></div>
     </aside>
@@ -29,7 +36,7 @@
       <div id="app"></div>
     </main>
 
-    <footer class="app-footer">Panel de Cajas &middot; demo comunitario</footer>
+    <footer class="app-footer">Cosigna &middot; tesorerías colectivas con aprobación compartida</footer>
   </div>
 
   <script type="module" src="/src/main.js"></script>

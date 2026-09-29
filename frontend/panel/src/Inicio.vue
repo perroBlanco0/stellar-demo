@@ -95,11 +95,14 @@ function copiar(texto) {
 
 <template>
   <div class="pagina">
-    <h1 class="titulo">Cajas</h1>
-    <p class="subtitulo">
-      Una caja junta el dinero de un grupo y cada gasto necesita las aprobaciones
-      que ustedes definan. Sin sorpresas: nadie mueve dinero solo.
-    </p>
+    <div class="hero">
+      <img class="hero-logo" src="/logo.png" alt="Cosigna" />
+      <h1 class="hero-nombre">Cosigna</h1>
+      <p class="hero-tagline">Tesorerías colectivas con aprobación compartida</p>
+      <p class="hero-linea">
+        Cajas de dinero compartidas donde cada gasto necesita la aprobación de todos.
+      </p>
+    </div>
 
     <div v-if="creada" class="card tarjeta">
       <div class="card-body">
@@ -156,7 +159,7 @@ function copiar(texto) {
     <p class="mt-4 mb-0">
       <a href="#/acceso" class="texto-secundario">Acceso</a>
       <span class="texto-secundario"> &middot; </span>
-      <a href="#/admin" class="texto-secundario">Administraci&oacute;n de organizaciones</a>
+      <a href="#/config" class="texto-secundario">Configuraci&oacute;n</a>
     </p>
   </div>
 </template>
