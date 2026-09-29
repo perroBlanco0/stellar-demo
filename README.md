@@ -365,7 +365,30 @@ Response (200):
 { "ok": true }
 Errores: 401 unauthorized, 403 forbidden, 409 organizacion_tiene_cajas
 
+POST /auth/recuperar
+Pide un codigo de 6 digitos para cambiar la clave (sirve para usuarios y admins). Si el correo existe se le envia el codigo por email (vence en 15 min). Siempre responde ok para no revelar si el correo existe.
+Request:
+{ "email": "tomas@x.cl" }
+Response (200):
+{ "ok": true }
+
+POST /auth/cambiar-clave
+Cambia la clave usando el codigo recibido. Cierra todas las sesiones de esa cuenta (hay que entrar de nuevo).
+Request:
+{ "email": "tomas@x.cl", "codigo": "123456", "password": "nueva" }
+Response (200):
+{ "ok": true }
+Errores: 400 missing_fields, 400 codigo_invalido
+
+## Correos transaccionales
+
+Con `RESEND_API_KEY` configurada el backend envia (de marca, nunca rompen el request si fallan):
+- Bienvenida al registrarse un usuario con email (POST /usuarios).
+- Aviso "gasto aprobado" cuando una propuesta se ejecuta — a los miembros con usuario registrado que tengan email y a los admins de la organizacion.
+- Codigo de recuperacion de clave (POST /auth/recuperar).
+Sin la clave los correos se omiten en silencio. `CORREO_DESDE` define el remitente.
+
 Que requiere login y que no:
 - CON login de admin (Bearer token de POST /auth/login): POST /cajas, PUT /cajas/{id}, DELETE /cajas/{id}, PUT /cajas/{id}/members/{memberId}, DELETE /cajas/{id}/members/{memberId}, GET /usuarios, PUT /usuarios/{id}, DELETE /usuarios/{id}, POST /organizaciones/{id}/admins, GET /organizaciones/{id}/admins, PUT /organizaciones/{id}/admins/{adminId}, DELETE /organizaciones/{id}/admins/{adminId}, GET /organizaciones/{id}/cajas, PUT /organizaciones/{id}, DELETE /organizaciones/{id}.
 - CON login de usuario (Bearer token de POST /auth/usuario/login): GET /usuarios/me/cajas.
-- SIN login (no rompe el flujo del miembro que aprueba gastos): GET /cajas/{id}, GET /cajas/{id}/estado, GET /cajas/{id}/proposals, GET /cajas/{id}/trazabilidad, POST /cajas/{id}/members, POST /cajas/{id}/proposals, POST /proposals/{id}/signatures, POST /proposals/{id}/ejecutar, POST /faucet, POST /usuarios, GET /usuarios/{public_key}, POST /organizaciones, POST /auth/login, POST /auth/usuario/login.
+- SIN login (no rompe el flujo del miembro que aprueba gastos): GET /cajas/{id}, GET /cajas/{id}/estado, GET /cajas/{id}/proposals, GET /cajas/{id}/trazabilidad, POST /cajas/{id}/members, POST /cajas/{id}/proposals, POST /proposals/{id}/signatures, POST /proposals/{id}/ejecutar, POST /faucet, POST /usuarios, GET /usuarios/{public_key}, POST /organizaciones, POST /auth/login, POST /auth/usuario/login, POST /auth/recuperar, POST /auth/cambiar-clave.

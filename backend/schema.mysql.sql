@@ -111,3 +111,15 @@ CREATE INDEX idx_usuario_sessions_token ON usuario_sessions(token);
 -- ALTER TABLE usuarios ADD COLUMN email VARCHAR(255), ADD COLUMN password_hash VARCHAR(255);
 -- y para members sin aprobacion/vinculo a usuario:
 -- ALTER TABLE members ADD COLUMN puede_aprobar TINYINT(1) NOT NULL DEFAULT 1, ADD COLUMN usuario_id INT, ADD FOREIGN KEY (usuario_id) REFERENCES usuarios(id);
+
+CREATE TABLE IF NOT EXISTS codigos_recuperacion (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(16) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    codigo VARCHAR(8) NOT NULL,
+    expira_en TIMESTAMP NOT NULL,
+    usado TINYINT(1) NOT NULL DEFAULT 0,
+    creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_codigos_email ON codigos_recuperacion(email);

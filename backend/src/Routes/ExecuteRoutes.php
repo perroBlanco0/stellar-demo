@@ -2,6 +2,7 @@
 
 namespace App\Routes;
 
+use App\Correo;
 use App\Database;
 use App\Eventos;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -66,6 +67,8 @@ final class ExecuteRoutes
                     'proposal_id' => $args['id'],
                     'hash' => $result->getHash(),
                 ]);
+
+                Correo::avisarGastoAprobado($pdo, (int) $proposal['caja_id'], $proposal);
 
                 $response->getBody()->write(json_encode(['ok' => true, 'hash' => $result->getHash()]));
 

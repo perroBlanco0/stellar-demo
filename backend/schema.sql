@@ -109,3 +109,15 @@ ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_hash TEXT;
 -- Migracion para BD existentes: aprobacion ON/OFF y vinculo miembro->usuario.
 ALTER TABLE members ADD COLUMN IF NOT EXISTS puede_aprobar BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS usuario_id INTEGER REFERENCES usuarios(id);
+
+CREATE TABLE IF NOT EXISTS codigos_recuperacion (
+    id SERIAL PRIMARY KEY,
+    tipo TEXT NOT NULL,
+    email TEXT NOT NULL,
+    codigo TEXT NOT NULL,
+    expira_en TIMESTAMPTZ NOT NULL,
+    usado BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_codigos_email ON codigos_recuperacion(email);

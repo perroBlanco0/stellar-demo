@@ -8,6 +8,7 @@ use App\Routes\AdminRoutes;
 use App\Routes\CajaRoutes;
 use App\Routes\ExecuteRoutes;
 use App\Routes\FaucetRoutes;
+use App\Routes\RecuperacionRoutes;
 use App\Routes\StellarRoutes;
 use App\Routes\TrazabilidadRoutes;
 use App\Routes\UsuarioRoutes;
@@ -60,6 +61,7 @@ CajaRoutes::register($app);
 StellarRoutes::register($app);
 ExecuteRoutes::register($app);
 UsuarioRoutes::register($app);
+RecuperacionRoutes::register($app);
 TrazabilidadRoutes::register($app);
 AdminRoutes::register($app);
 

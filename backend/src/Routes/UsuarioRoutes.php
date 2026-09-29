@@ -3,6 +3,7 @@
 namespace App\Routes;
 
 use App\Auth;
+use App\Correo;
 use App\Database;
 use App\Eventos;
 use PDO;
@@ -74,6 +75,10 @@ final class UsuarioRoutes
                 'public_key' => $publicKey,
                 'email' => $emailParam,
             ]);
+
+            if ($emailParam !== null) {
+                Correo::bienvenida($emailParam, $nombre);
+            }
 
             $response->getBody()->write(json_encode(['ok' => true, 'id' => $id]));
 

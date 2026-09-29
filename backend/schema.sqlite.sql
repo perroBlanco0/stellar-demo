@@ -92,3 +92,15 @@ CREATE INDEX IF NOT EXISTS idx_eventos_caja ON eventos(caja_id);
 CREATE INDEX IF NOT EXISTS idx_admin_users_org ON admin_users(organizacion_id);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_token ON admin_sessions(token);
 CREATE INDEX IF NOT EXISTS idx_usuario_sessions_token ON usuario_sessions(token);
+
+CREATE TABLE IF NOT EXISTS codigos_recuperacion (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo TEXT NOT NULL,
+    email TEXT NOT NULL,
+    codigo TEXT NOT NULL,
+    expira_en TEXT NOT NULL,
+    usado INTEGER NOT NULL DEFAULT 0,
+    creado_en TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_codigos_email ON codigos_recuperacion(email);

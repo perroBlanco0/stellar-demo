@@ -313,3 +313,52 @@ BEGIN
 END $$
 
 DELIMITER ;
+
+-- ---------- recuperacion de clave por correo ----------
+
+DELIMITER $$
+
+CREATE PROCEDURE sp_crear_codigo_recuperacion(
+    IN p_tipo VARCHAR(16),
+    IN p_email VARCHAR(255),
+    IN p_codigo VARCHAR(8),
+    IN p_expira_en TIMESTAMP
+)
+BEGIN
+    INSERT INTO codigos_recuperacion (tipo, email, codigo, expira_en)
+    VALUES (p_tipo, p_email, p_codigo, p_expira_en);
+END $$
+
+CREATE PROCEDURE sp_obtener_codigo_recuperacion(
+    IN p_email VARCHAR(255),
+    IN p_codigo VARCHAR(8),
+    IN p_ahora TIMESTAMP
+)
+BEGIN
+    SELECT * FROM codigos_recuperacion
+    WHERE email = p_email AND codigo = p_codigo AND usado = 0 AND expira_en > p_ahora
+    ORDER BY id DESC LIMIT 1;
+END $$
+
+CREATE PROCEDURE sp_marcar_codigo_usado(IN p_id INT)
+BEGIN
+    UPDATE codigos_recuperacion SET usado = 1 WHERE id = p_id;
+END $$
+
+CREATE PROCEDURE sp_actualizar_clave_usuario(
+    IN p_email VARCHAR(255),
+    IN p_password_hash VARCHAR(255)
+)
+BEGIN
+    UPDATE usuarios SET password_hash = p_password_hash WHERE email = p_email;
+END $$
+
+CREATE PROCEDURE sp_actualizar_clave_admin(
+    IN p_email VARCHAR(255),
+    IN p_password_hash VARCHAR(255)
+)
+BEGIN
+    UPDATE admin_users SET password_hash = p_password_hash WHERE email = p_email;
+END $$
+
+DELIMITER ;
