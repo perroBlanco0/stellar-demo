@@ -68,6 +68,9 @@ function textoError(datos) {
     destino_no_existe: 'La cuenta de destino no existe y no puede recibir este activo.',
     aprobacion_desactivada: 'Este miembro tiene la aprobación desactivada.',
     usuario_not_found: 'No se encontró el usuario.',
+    miembro_duplicado: 'Esa persona ya es miembro de esta caja.',
+    member_not_found: 'No se encontró al miembro.',
+    proposal_not_found: 'No se encontró la solicitud.',
     unauthorized: 'La sesión de administrador venció. Entra de nuevo.',
     forbidden: 'No tienes permiso para esta acción.',
   };
