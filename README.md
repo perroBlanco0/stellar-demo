@@ -6,9 +6,110 @@ stellar hackaton 30 septiembre 2026
 - `backend/` — API PHP (Slim), Stellar SDK, esquema de base de datos
   (Postgres/MySQL/SQLite). Ver `backend/README` (este mismo contrato de
   endpoints aplica) y `backend/Dockerfile` para el deploy.
-- `frontend/` — Angular (Josue). Consume los endpoints documentados abajo.
+- `frontend/` — Angular (Josue) y `frontend/panel/` (Vue). Consumen los endpoints documentados abajo.
 
 <img width="854" height="685" alt="image" src="https://github.com/user-attachments/assets/8baf3798-94f2-422e-9ceb-0b6009f81741" />
+
+## Modelo de datos
+
+Stellar sigue siendo la fuente de verdad del dinero — estas tablas solo dan contexto legible (nombres, motivos, quién puede aprobar, historial) que la cadena no guarda. El esquema completo vive en `backend/schema.sql` (Postgres), `backend/schema.mysql.sql` y `backend/schema.sqlite.sql`.
+
+```mermaid
+erDiagram
+    ORGANIZACIONES ||--o{ ADMIN_USERS : "tiene"
+    ORGANIZACIONES ||--o{ CAJAS : "tiene"
+    ADMIN_USERS ||--o{ ADMIN_SESSIONS : "inicia"
+    CAJAS ||--o{ MEMBERS : "tiene"
+    CAJAS ||--o{ PROPOSALS : "tiene"
+    CAJAS ||--o{ EVENTOS : "registra"
+    PROPOSALS ||--o{ PROPOSAL_SIGNATURES : "acumula"
+    MEMBERS ||--o{ PROPOSAL_SIGNATURES : "firma"
+    USUARIOS ||--o{ MEMBERS : "puede vincularse a"
+    USUARIOS ||--o{ USUARIO_SESSIONS : "inicia"
+
+    ORGANIZACIONES {
+        int id PK
+        string nombre
+        timestamp creado_en
+    }
+    ADMIN_USERS {
+        int id PK
+        int organizacion_id FK
+        string email
+        string password_hash
+        string rol "admin | super"
+        timestamp creado_en
+    }
+    ADMIN_SESSIONS {
+        int id PK
+        int admin_user_id FK
+        string token
+        timestamp expira_en
+    }
+    CAJAS {
+        int id PK
+        int organizacion_id FK "nullable, legacy"
+        string nombre
+        string curso
+        string public_key "cuenta Stellar real"
+        int umbral
+        timestamp creado_en
+    }
+    MEMBERS {
+        int id PK
+        int caja_id FK
+        int usuario_id FK "nullable"
+        string nombre
+        string public_key
+        bool puede_aprobar
+        timestamp creado_en
+    }
+    PROPOSALS {
+        int id PK
+        int caja_id FK
+        string destino
+        string monto
+        string motivo
+        string xdr
+        string estado "pendiente | ejecutada"
+        timestamp creado_en
+    }
+    PROPOSAL_SIGNATURES {
+        int id PK
+        int proposal_id FK
+        int member_id FK
+        timestamp firmado_en
+    }
+    USUARIOS {
+        int id PK
+        string nombre
+        string public_key UK
+        string email "nullable"
+        string password_hash "nullable"
+        timestamp creado_en
+    }
+    USUARIO_SESSIONS {
+        int id PK
+        int usuario_id FK
+        string token
+        timestamp expira_en
+    }
+    EVENTOS {
+        int id PK
+        int caja_id FK "nullable"
+        string tipo
+        string detalle "JSON"
+        timestamp creado_en
+    }
+```
+
+`codigos_recuperacion` (tipo, email, codigo, expira_en, usado) no está en el diagrama porque no se relaciona por FK con nada — es una tabla de soporte para el flujo de recuperación de contraseña.
+
+**Grupos, por responsabilidad:**
+- **Multi-tenant / administración:** `organizaciones`, `admin_users`, `admin_sessions` — quién puede crear cajas y para qué organización.
+- **Núcleo de la Caja (lo que ya se probó end-to-end en Stellar):** `cajas`, `members`, `proposals`, `proposal_signatures`.
+- **Usuarios finales:** `usuarios`, `usuario_sessions` — login opcional para que una persona vea "mis cajas" sin ser admin.
+- **Soporte:** `eventos` (trazabilidad/auditoría), `codigos_recuperacion` (recuperar contraseña).
 
 
 POST /faucet
