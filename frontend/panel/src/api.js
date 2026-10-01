@@ -31,16 +31,23 @@ export const verEstado = (id) => req('GET', `/cajas/${id}/estado`);
 export const verPropuestas = (id) => req('GET', `/cajas/${id}/proposals`);
 export const crearCaja = (nombre, curso, publicKey, umbral) =>
   req('POST', '/cajas', { nombre, curso, public_key: publicKey, umbral });
+// Endpoints que aceptan la sesión de admin O de usuario: se envía la que exista.
+const tokenDeSesion = () => (localStorage.getItem('admin_token') ? 'admin_token' : 'usuario_token');
+
 export const agregarMiembro = (cajaId, nombre, publicKey) =>
-  req('POST', `/cajas/${cajaId}/members`, { nombre, public_key: publicKey });
+  req('POST', `/cajas/${cajaId}/members`, { nombre, public_key: publicKey }, tokenDeSesion());
 export const agregarMiembroPorUsuario = (cajaId, usuarioId) =>
-  req('POST', `/cajas/${cajaId}/members`, { usuario_id: usuarioId });
+  req('POST', `/cajas/${cajaId}/members`, { usuario_id: usuarioId }, tokenDeSesion());
 export const crearPropuesta = (cajaId, destino, monto, motivo, xdr) =>
-  req('POST', `/cajas/${cajaId}/proposals`, { destino, monto, motivo, xdr });
+  req('POST', `/cajas/${cajaId}/proposals`, { destino, monto, motivo, xdr }, tokenDeSesion());
 export const firmarPropuesta = (propuestaId, memberId, xdr) =>
-  req('POST', `/proposals/${propuestaId}/signatures`, { member_id: memberId, xdr });
+  req('POST', `/proposals/${propuestaId}/signatures`, { member_id: memberId, xdr }, tokenDeSesion());
 export const ejecutarPropuesta = (propuestaId) =>
-  req('POST', `/proposals/${propuestaId}/ejecutar`, {});
+  req('POST', `/proposals/${propuestaId}/ejecutar`, {}, tokenDeSesion());
+export const eliminarPropuesta = (propuestaId) =>
+  req('DELETE', `/proposals/${propuestaId}`, null, tokenDeSesion());
+export const quitarFirmaPropuesta = (propuestaId, memberId) =>
+  req('DELETE', `/proposals/${propuestaId}/signatures/${memberId}`, null, tokenDeSesion());
 export const pedirFondos = (destino) => req('POST', '/faucet', { destination: destino });
 
 // Administración de organizaciones (la creación de cajas ya va con token

@@ -49,7 +49,11 @@ export function cargarCuenta(pub) {
 }
 
 // Deja la caja configurada: los pagos exigen `umbral` aprobaciones de
-// miembros; la clave maestra (peso 1) queda solo para administrarla.
+// miembros. La clave maestra pesa 2 para poder administrar sola (agregar
+// miembros), pero ningun miembro (peso 1) puede cambiar las reglas solo:
+// las operaciones administrativas exigen peso 2.
+// Limite conocido: si umbral <= 2 la maestra tambien alcanza a pagar sola;
+// con umbral >= 3 solo administra.
 export async function prepararCaja(pub, secreta, umbral) {
   const cuenta = await cargarCuenta(pub);
   const tx = new S.TransactionBuilder(cuenta, {
@@ -60,8 +64,8 @@ export async function prepararCaja(pub, secreta, umbral) {
       S.Operation.setOptions({
         lowThreshold: 0,
         medThreshold: umbral,
-        highThreshold: 1,
-        masterWeight: 1,
+        highThreshold: 2,
+        masterWeight: 2,
       })
     )
     .setTimeout(30)

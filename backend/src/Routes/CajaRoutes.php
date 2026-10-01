@@ -2,9 +2,12 @@
 
 namespace App\Routes;
 
+use App\Acceso;
 use App\Auth;
 use App\Database;
 use App\Eventos;
+use App\StellarVerif;
+use Soneso\StellarSDK\AbstractTransaction;
 use PDO;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -98,6 +101,7 @@ final class CajaRoutes
         // {usuario_id}: vincula un usuario registrado (usa su nombre y
         // public_key, guarda el vinculo; 409 si su clave ya es miembro).
         // {nombre, public_key}: claves sueltas, flujo original sin cambios.
+        // Solo el admin de la organizacion administra miembros.
         $app->post('/cajas/{id}/members', function (Request $request, Response $response, array $args): Response {
             $body = json_decode((string) $request->getBody(), true) ?? [];
             $usuarioId = (int) ($body['usuario_id'] ?? 0);
@@ -105,6 +109,14 @@ final class CajaRoutes
             $publicKey = trim((string) ($body['public_key'] ?? ''));
 
             $pdo = Database::connection();
+
+            $caja = self::buscarCaja($pdo, $args['id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = Acceso::checkCajaAdmin($pdo, $request, $response, $caja)) {
+                return $error;
+            }
 
             if ($usuarioId > 0) {
                 $usuario = self::buscarUsuario($pdo, $usuarioId);
@@ -148,6 +160,8 @@ final class CajaRoutes
             return $response->withStatus(201);
         });
 
+        // POST /cajas/{id}/proposals — participantes de la caja (admin o
+        // usuario-miembro). El XDR se verifica: debe ser el pago declarado.
         $app->post('/cajas/{id}/proposals', function (Request $request, Response $response, array $args): Response {
             $body = json_decode((string) $request->getBody(), true) ?? [];
             $destino = trim((string) ($body['destino'] ?? ''));
@@ -160,6 +174,17 @@ final class CajaRoutes
             }
 
             $pdo = Database::connection();
+
+            $caja = self::buscarCaja($pdo, $args['id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = Acceso::checkCajaParticipante($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+            if (!StellarVerif::txDelPago($xdr, $caja['public_key'], $destino, $monto)) {
+                return self::jsonError($response, 422, 'xdr_invalido');
+            }
 
             if (self::isMysql()) {
                 $stmt = $pdo->prepare('CALL sp_crear_proposal(?, ?, ?, ?, ?, @id)');
@@ -220,6 +245,10 @@ final class CajaRoutes
             return $response;
         });
 
+        // POST /proposals/{id}/signatures — la firma se verifica de verdad:
+        // el XDR debe ser la misma transaccion guardada y contener una firma
+        // criptograficamente valida de la clave de ese miembro. Ya no se
+        // acepta un XDR cualquiera ni se pisan firmas previas.
         $app->post('/proposals/{id}/signatures', function (Request $request, Response $response, array $args): Response {
             $body = json_decode((string) $request->getBody(), true) ?? [];
             $memberId = (int) ($body['member_id'] ?? 0);
@@ -231,11 +260,14 @@ final class CajaRoutes
 
             $pdo = Database::connection();
 
-            $stmt = $pdo->prepare('SELECT caja_id FROM proposals WHERE id = ?');
+            $stmt = $pdo->prepare('SELECT caja_id, xdr, estado FROM proposals WHERE id = ?');
             $stmt->execute([$args['id']]);
             $proposal = $stmt->fetch();
             if (!$proposal) {
                 return self::jsonError($response, 404, 'proposal_not_found');
+            }
+            if ($proposal['estado'] !== 'pendiente') {
+                return self::jsonError($response, 409, 'proposal_already_executed');
             }
 
             // Solo firmas de miembros de la caja, y solo si su aprobacion
@@ -246,6 +278,39 @@ final class CajaRoutes
             }
             if (!self::aprobacionActiva($miembro)) {
                 return self::jsonError($response, 403, 'aprobacion_desactivada');
+            }
+
+            // Un miembro aprueba una sola vez.
+            $dup = $pdo->prepare('SELECT 1 FROM proposal_signatures WHERE proposal_id = ? AND member_id = ?');
+            $dup->execute([$args['id'], $memberId]);
+            if ($dup->fetchColumn()) {
+                return self::jsonError($response, 409, 'ya_firmo');
+            }
+
+            // El XDR entrante debe ser LA MISMA transaccion guardada y traer
+            // una firma real de este miembro, sin perder las anteriores.
+            try {
+                $txGuardada = AbstractTransaction::fromEnvelopeBase64XdrString($proposal['xdr']);
+                $txNueva = AbstractTransaction::fromEnvelopeBase64XdrString($xdr);
+            } catch (\Throwable $e) {
+                return self::jsonError($response, 422, 'xdr_invalido');
+            }
+            if (!StellarVerif::mismoTx($txGuardada, $txNueva)) {
+                return self::jsonError($response, 422, 'xdr_invalido');
+            }
+
+            $pubkeys = array_merge(
+                [(string) $miembro['public_key']],
+                self::pubkeysFirmantesPrevios($pdo, (int) $args['id'])
+            );
+            $firmantes = StellarVerif::firmantesReales($txNueva, $pubkeys);
+            if (!in_array((string) $miembro['public_key'], $firmantes, true)) {
+                return self::jsonError($response, 403, 'firma_invalida');
+            }
+
+            $perdidas = array_diff($pubkeys, $firmantes);
+            if ($perdidas) {
+                return self::jsonError($response, 409, 'firma_pisada');
             }
 
             if (self::isMysql()) {
@@ -272,6 +337,77 @@ final class CajaRoutes
             return $response->withStatus(201);
         });
 
+        // DELETE /proposals/{id} — retira una solicitud pendiente
+        // (las ejecutadas son historial y no se borran). Solo admin.
+        $app->delete('/proposals/{id}', function (Request $request, Response $response, array $args): Response {
+            $pdo = Database::connection();
+
+            $stmt = $pdo->prepare('SELECT caja_id, estado FROM proposals WHERE id = ?');
+            $stmt->execute([$args['id']]);
+            $proposal = $stmt->fetch();
+            if (!$proposal) {
+                return self::jsonError($response, 404, 'proposal_not_found');
+            }
+
+            $caja = self::buscarCaja($pdo, (string) $proposal['caja_id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = Acceso::checkCajaAdmin($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+            if ($proposal['estado'] !== 'pendiente') {
+                return self::jsonError($response, 409, 'proposal_already_executed');
+            }
+
+            $pdo->prepare('DELETE FROM proposal_signatures WHERE proposal_id = ?')->execute([$args['id']]);
+            $pdo->prepare('DELETE FROM proposals WHERE id = ?')->execute([$args['id']]);
+
+            Eventos::registrar($pdo, (int) $proposal['caja_id'], 'propuesta_eliminada', [
+                'proposal_id' => $args['id'],
+            ]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
+        // DELETE /proposals/{id}/signatures/{memberId} — quita la firma mas
+        // reciente de ese miembro en la solicitud. Solo admin.
+        $app->delete('/proposals/{id}/signatures/{memberId}', function (Request $request, Response $response, array $args): Response {
+            $pdo = Database::connection();
+
+            $stmt = $pdo->prepare('SELECT caja_id, estado FROM proposals WHERE id = ?');
+            $stmt->execute([$args['id']]);
+            $proposal = $stmt->fetch();
+            if (!$proposal) {
+                return self::jsonError($response, 404, 'proposal_not_found');
+            }
+
+            $caja = self::buscarCaja($pdo, (string) $proposal['caja_id']);
+            if (!$caja) {
+                return self::jsonError($response, 404, 'caja_not_found');
+            }
+            if ($error = Acceso::checkCajaAdmin($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+
+            $ultima = $pdo->prepare(
+                'SELECT id FROM proposal_signatures WHERE proposal_id = ? AND member_id = ?
+                 ORDER BY firmado_en DESC, id DESC LIMIT 1'
+            );
+            $ultima->execute([$args['id'], $args['memberId']]);
+            $firmaId = $ultima->fetchColumn();
+            if (!$firmaId) {
+                return self::jsonError($response, 404, 'signature_not_found');
+            }
+            $pdo->prepare('DELETE FROM proposal_signatures WHERE id = ?')->execute([$firmaId]);
+
+            $response->getBody()->write(json_encode(['ok' => true]));
+
+            return $response;
+        });
+
         // PUT /cajas/{id} — {nombre}
         // Solo un admin de la organizacion de la caja (o cualquier admin si
         // la caja no tiene organizacion, legacy).
@@ -289,7 +425,7 @@ final class CajaRoutes
             if (!$caja) {
                 return self::jsonError($response, 404, 'caja_not_found');
             }
-            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+            if ($error = Acceso::checkCajaAdmin($pdo, $request, $response, $caja)) {
                 return $error;
             }
 
@@ -320,7 +456,7 @@ final class CajaRoutes
             if (!$caja) {
                 return self::jsonError($response, 404, 'caja_not_found');
             }
-            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+            if ($error = Acceso::checkCajaAdmin($pdo, $request, $response, $caja)) {
                 return $error;
             }
 
@@ -379,7 +515,7 @@ final class CajaRoutes
             if (!$caja) {
                 return self::jsonError($response, 404, 'caja_not_found');
             }
-            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+            if ($error = Acceso::checkCajaAdmin($pdo, $request, $response, $caja)) {
                 return $error;
             }
 
@@ -428,7 +564,7 @@ final class CajaRoutes
             if (!$caja) {
                 return self::jsonError($response, 404, 'caja_not_found');
             }
-            if ($error = self::checkCajaAdmin($pdo, $request, $response, $caja)) {
+            if ($error = Acceso::checkCajaAdmin($pdo, $request, $response, $caja)) {
                 return $error;
             }
 
@@ -462,6 +598,9 @@ final class CajaRoutes
      */
     private static function buscarCaja(PDO $pdo, string $id)
     {
+        if (!is_numeric($id)) {
+            return false;
+        }
         if (self::isMysql()) {
             $stmt = $pdo->prepare('CALL sp_obtener_caja(?)');
             $stmt->execute([$id]);
@@ -551,24 +690,20 @@ final class CajaRoutes
         return $v === true || $v === 1 || $v === '1' || $v === 't' || $v === 'true';
     }
 
-    // Mutaciones de caja: admin de la organizacion de la caja, o cualquier
-    // admin si la caja no tiene organizacion_id (legacy). Null = autorizado.
+    // Public keys de los miembros que ya firmaron la propuesta (para
+    // comprobar que una nueva firma no pisa las anteriores).
     /**
-     * @param array<string, mixed> $caja
+     * @return list<string>
      */
-    private static function checkCajaAdmin(PDO $pdo, Request $request, Response $response, array $caja): ?Response
+    private static function pubkeysFirmantesPrevios(PDO $pdo, int $proposalId): array
     {
-        $admin = Auth::admin($pdo, $request);
-        if (!$admin) {
-            return self::jsonError($response, 401, 'unauthorized');
-        }
-        if ($caja['organizacion_id'] !== null
-            && (int) $caja['organizacion_id'] !== (int) $admin['organizacion_id']
-        ) {
-            return self::jsonError($response, 403, 'forbidden');
-        }
+        $stmt = $pdo->prepare(
+            'SELECT m.public_key FROM proposal_signatures s
+             JOIN members m ON m.id = s.member_id WHERE s.proposal_id = ?'
+        );
+        $stmt->execute([$proposalId]);
 
-        return null;
+        return array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
     private static function isMysql(): bool

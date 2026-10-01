@@ -19,9 +19,22 @@ use Slim\Factory\AppFactory;
 
 Dotenv::createImmutable(__DIR__ . '/..')->safeLoad();
 
+// Produccion: nunca mostrar stack traces; los errores salen como JSON.
+ini_set('display_errors', '0');
+
 $app = AppFactory::create();
 
 $app->add(new CorsMiddleware());
+
+$errorMiddleware = $app->addErrorMiddleware(false, true, true);
+$errorMiddleware->setDefaultErrorHandler(
+    function (Request $request, Throwable $e) use ($app) {
+        $response = $app->getResponseFactory()->createResponse();
+        $response->getBody()->write(json_encode(['ok' => false, 'error' => 'error_interno']));
+
+        return $response->withStatus(500)->withHeader('Content-Type', 'application/json');
+    }
+);
 
 // Aplica el schema idempotente en cada arranque (CREATE TABLE IF NOT EXISTS):
 // en Postgres/SQLite crea lo que falte sin tocar lo existente.

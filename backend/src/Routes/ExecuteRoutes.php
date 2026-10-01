@@ -2,9 +2,11 @@
 
 namespace App\Routes;
 
+use App\Acceso;
 use App\Correo;
 use App\Database;
 use App\Eventos;
+use App\StellarVerif;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
@@ -31,12 +33,23 @@ final class ExecuteRoutes
                 return self::jsonError($response, 409, 'proposal_already_executed');
             }
 
-            $cajaStmt = $pdo->prepare('SELECT umbral FROM cajas WHERE id = ?');
+            $cajaStmt = $pdo->prepare('SELECT * FROM cajas WHERE id = ?');
             $cajaStmt->execute([$proposal['caja_id']]);
             $caja = $cajaStmt->fetch();
 
             if (!$caja) {
                 return self::jsonError($response, 404, 'caja_not_found');
+            }
+
+            // Ejecutar lo hace un participante: admin de la organizacion
+            // o usuario registrado que es miembro de la caja.
+            if ($error = Acceso::checkCajaParticipante($pdo, $request, $response, $caja)) {
+                return $error;
+            }
+
+            // El XDR guardado debe seguir siendo el pago declarado.
+            if (!StellarVerif::txDelPago($proposal['xdr'], $caja['public_key'], $proposal['destino'], $proposal['monto'])) {
+                return self::jsonError($response, 422, 'xdr_invalido');
             }
 
             $sigStmt = $pdo->prepare('SELECT COUNT(*) FROM proposal_signatures WHERE proposal_id = ?');

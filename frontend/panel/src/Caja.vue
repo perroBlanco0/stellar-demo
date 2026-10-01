@@ -71,8 +71,13 @@ function textoError(datos) {
     miembro_duplicado: 'Esa persona ya es miembro de esta caja.',
     member_not_found: 'No se encontró al miembro.',
     proposal_not_found: 'No se encontró la solicitud.',
-    unauthorized: 'La sesión de administrador venció. Entra de nuevo.',
+    unauthorized: 'Entra a tu cuenta para hacer esto.',
     forbidden: 'No tienes permiso para esta acción.',
+    xdr_invalido: 'El comprobante no corresponde a esta solicitud.',
+    ya_firmo: 'Este miembro ya aprobó esta solicitud.',
+    firma_invalida: 'La aprobación no es válida para este miembro.',
+    firma_pisada: 'El comprobante perdió aprobaciones anteriores. Recarga y vuelve a intentar.',
+    signature_not_found: 'No se encontró esa aprobación.',
   };
   return mapa[datos.error] || 'Ocurrió un error (' + (datos.error || 'desconocido') + ').';
 }
