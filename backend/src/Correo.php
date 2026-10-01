@@ -4,8 +4,9 @@ namespace App;
 
 // Envio de correo transaccional de marca (Cosigna).
 // Config por env:
-//   RESEND_API_KEY  — clave de resend.com (sin ella los correos se omiten en silencio)
-//   CORREO_DESDE    — remitente, ej. "Cosigna <hola@tudominio.cl>" (default resend.dev de pruebas)
+//   BREVO_API_KEY   — clave de brevo.com (prioritaria; xkeysib-...)
+//   RESEND_API_KEY  — clave de resend.com (respaldo si no hay Brevo)
+//   CORREO_DESDE    — remitente, ej. "Cosigna <hola@tudominio.cl>"
 //   CORREO_LOGO_URL — URL publica del logo (default: el logo del propio panel)
 //   CORREO_APP_URL  — base del panel para los botones (default: el panel en Render)
 // Nunca rompe el request: si el envio falla devuelve false y el flujo sigue.
@@ -13,25 +14,70 @@ final class Correo
 {
     public static function enviar(string $para, string $asunto, string $cuerpoHtml): bool
     {
-        $apiKey = $_ENV['RESEND_API_KEY'] ?? '';
-        if ($apiKey === '') {
-            return false;
-        }
-
-        $desde = $_ENV['CORREO_DESDE'] ?? 'Cosigna <onboarding@resend.dev>';
         $html = self::plantilla($cuerpoHtml);
 
+        if (($_ENV['BREVO_API_KEY'] ?? '') !== '') {
+            return self::enviarBrevo($para, $asunto, $html);
+        }
+        if (($_ENV['RESEND_API_KEY'] ?? '') !== '') {
+            return self::enviarResend($para, $asunto, $html);
+        }
+        return false;
+    }
+
+    // api.brevo.com/v3/smtp/email — el remitente debe estar verificado en Brevo.
+    private static function enviarBrevo(string $para, string $asunto, string $html): bool
+    {
+        [$nombre, $email] = self::remitente();
         $payload = json_encode([
-            'from' => $desde,
+            'sender' => ['name' => $nombre, 'email' => $email],
+            'to' => [['email' => $para]],
+            'subject' => $asunto,
+            'htmlContent' => $html,
+        ]);
+
+        return self::post(
+            'https://api.brevo.com/v3/smtp/email',
+            "api-key: {$_ENV['BREVO_API_KEY']}\r\nContent-Type: application/json\r\n",
+            $payload,
+            'messageId'
+        );
+    }
+
+    private static function enviarResend(string $para, string $asunto, string $html): bool
+    {
+        [$nombre, $email] = self::remitente();
+        $payload = json_encode([
+            'from' => "{$nombre} <{$email}>",
             'to' => [$para],
             'subject' => $asunto,
             'html' => $html,
         ]);
 
+        return self::post(
+            'https://api.resend.com/emails',
+            "Authorization: Bearer {$_ENV['RESEND_API_KEY']}\r\nContent-Type: application/json\r\n",
+            $payload,
+            'id'
+        );
+    }
+
+    // "Cosigna <hola@x.cl>" -> ['Cosigna', 'hola@x.cl']
+    private static function remitente(): array
+    {
+        $desde = $_ENV['CORREO_DESDE'] ?? 'Cosigna <onboarding@resend.dev>';
+        if (preg_match('/^\s*(.*?)\s*<([^>]+)>\s*$/', $desde, $m)) {
+            return [$m[1] !== '' ? $m[1] : 'Cosigna', $m[2]];
+        }
+        return ['Cosigna', $desde];
+    }
+
+    private static function post(string $url, string $headers, string $payload, string $campoOk): bool
+    {
         $contexto = stream_context_create([
             'http' => [
                 'method' => 'POST',
-                'header' => "Authorization: Bearer {$apiKey}\r\nContent-Type: application/json\r\n",
+                'header' => $headers,
                 'content' => $payload,
                 'timeout' => 10,
                 'ignore_errors' => true,
@@ -39,12 +85,12 @@ final class Correo
         ]);
 
         try {
-            $respuesta = @file_get_contents('https://api.resend.com/emails', false, $contexto);
+            $respuesta = @file_get_contents($url, false, $contexto);
             if ($respuesta === false) {
                 return false;
             }
             $datos = json_decode($respuesta, true);
-            return isset($datos['id']);
+            return isset($datos[$campoOk]);
         } catch (\Throwable) {
             return false;
         }
