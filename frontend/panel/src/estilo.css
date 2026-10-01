@@ -105,6 +105,11 @@ body {
   min-height: 100vh;
 }
 
+/* Sin sesión: nada de panel — solo el contenido (login, registro, caja pública). */
+body.sin-sesion .app-sidebar { display: none; }
+body.sin-sesion .app-main { margin-left: 0; }
+body.sin-sesion .btn-menu { display: none !important; }
+
 .app-footer {
   position: fixed;
   bottom: 0; left: 0; right: 0;

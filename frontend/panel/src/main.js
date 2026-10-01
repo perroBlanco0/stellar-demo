@@ -75,6 +75,14 @@ function pintarPermisos() {
   $('#link-organizaciones').toggle(!!admin && admin.rol === 'super');
 }
 
+// Sin sesión no se muestra el panel: solo el contenido (login, registro,
+// recuperar clave o una caja pública abierta por link).
+function pintarSesion() {
+  const haySesion =
+    !!localStorage.getItem('admin_sesion') || !!localStorage.getItem('usuario_token');
+  $('body').toggleClass('sin-sesion', !haySesion);
+}
+
 $(function () {
   $('#btn-menu').on('click', function () {
     $('body').toggleClass('sidebar-open');
@@ -86,6 +94,7 @@ $(function () {
     pintarActivos();
     pintarRecientes();
     pintarPermisos();
+    pintarSesion();
   });
 
   // Vue avisa cuando cambia la lista de recientes (al abrir una caja).
@@ -94,6 +103,7 @@ $(function () {
   pintarActivos();
   pintarRecientes();
   pintarPermisos();
+  pintarSesion();
 });
 
 createApp(App).mount('#app');
