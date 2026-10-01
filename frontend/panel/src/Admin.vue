@@ -1,11 +1,10 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import {
-  entrarAdmin, crearOrganizacion, agregarAdmin, listarAdmins,
-  actualizarAdmin, eliminarAdmin, listarCajasOrganizacion,
+  crearOrganizacion, agregarAdmin, listarAdmins, listarOrganizaciones,
+  actualizarAdmin, cambiarRolAdmin, eliminarAdmin, listarCajasOrganizacion,
   actualizarCaja, eliminarCaja, listarUsuarios, actualizarUsuario,
   eliminarUsuario, actualizarOrganizacion, eliminarOrganizacion,
-  listarOrganizaciones, cambiarRolAdmin,
 } from './api';
 import { confirmar, listo, falla, avisar, pedirTexto } from './avisos';
 
@@ -16,44 +15,29 @@ import { confirmar, listo, falla, avisar, pedirTexto } from './avisos';
 // La sección viene de la URL (#/config/SECCION): el menú del sidebar
 // enlaza directo a cada parte de esta vista.
 const props = defineProps({ seccion: { type: String, default: 'admins' } });
-// URL -> pestaña interna (admins, cajas, usuarios, organizacion -> org,
-// organizaciones -> orgs: el mantenedor global, solo super-admin)
-const SECCIONES = {
-  admins: 'admins', cajas: 'cajas', usuarios: 'usuarios',
-  organizacion: 'org', organizaciones: 'orgs',
-};
+// URL -> pestaña interna (admins, cajas, usuarios, organizacion -> org)
+const SECCIONES = { admins: 'admins', cajas: 'cajas', usuarios: 'usuarios', organizacion: 'org', organizaciones: 'orgs' };
 // pestaña interna -> URL
-const RUTAS = {
-  admins: 'admins', cajas: 'cajas', usuarios: 'usuarios',
-  org: 'organizacion', orgs: 'organizaciones',
-};
+const RUTAS = { admins: 'admins', cajas: 'cajas', usuarios: 'usuarios', org: 'organizacion', orgs: 'organizaciones' };
 
-const email = ref('');
-const password = ref('');
 const sesion = ref(null); // { token, email, organizacion_id, rol }
 const cargando = ref(false);
 
-// El super-admin ve y administra TODAS las organizaciones;
-// el admin normal solo la suya.
-const esSuper = computed(() => sesion.value?.rol === 'super');
-
-// Pestañas del panel con sesión: admins | cajas | usuarios | org
+// Pestañas del panel con sesión: admins | cajas | usuarios | org | orgs (super)
 const pestana = ref(SECCIONES[props.seccion] || 'admins');
 const admins = ref([]);
 const cajas = ref([]);
 const usuarios = ref([]);
+const organizaciones = ref([]);
 const orgNombre = ref(localStorage.getItem('admin_org_nombre') || '');
 
-// Organizaciones (solo super): lista completa con sus admins y formulario
-// para crear una org nueva con su primer administrador.
-const organizaciones = ref([]);
-const orgExpandida = ref(0);
-const adminsPorOrg = ref({});
-const supOrgNombre = ref('');
-const supOrgEmail = ref('');
-const supOrgPassword = ref('');
-const nuevoAdminEmail = ref('');
-const nuevoAdminPassword = ref('');
+// Rol super: puede ver todas las organizaciones y asignar/quitar super a otros.
+const esSuper = () => sesion.value && sesion.value.rol === 'super';
+
+// Crear organización (abierto: es el bootstrap, crea org + primer admin).
+const orgNuevoNombre = ref('');
+const orgEmail = ref('');
+const orgPassword = ref('');
 
 // Agregar admin a mi organización.
 const nuevoEmail = ref('');
@@ -65,20 +49,6 @@ const renombrarOrg = ref('');
 function cargarSesion() {
   const guardada = localStorage.getItem('admin_sesion');
   sesion.value = guardada ? JSON.parse(guardada) : null;
-}
-
-function guardarSesion(datos) {
-  localStorage.setItem('admin_token', datos.token);
-  localStorage.setItem(
-    'admin_sesion',
-    JSON.stringify({
-      token: datos.token,
-      email: datos.email,
-      organizacion_id: datos.organizacion_id,
-      rol: datos.rol || 'admin',
-    })
-  );
-  cargarSesion();
 }
 
 async function salir() {
@@ -106,10 +76,7 @@ function textoError(codigo) {
     email_ya_registrado: 'Ese correo ya está registrado.',
     email_duplicado: 'Ese correo ya está registrado.',
     unauthorized: 'La sesión venció. Entra de nuevo.',
-    forbidden: 'No tienes permiso para esa acción.',
-    rol_invalido: 'Ese rol no existe.',
-    ultimo_super: 'Debe quedar al menos un super-admin.',
-    admin_not_found: 'No se encontró el administrador.',
+    forbidden: 'No perteneces a esa organización.',
     ultimo_admin: 'No puedes eliminar al último administrador de la organización.',
     organizacion_tiene_cajas: 'La organización todavía tiene cajas: elimínalas primero desde la sección Cajas.',
     caja_not_found: 'No se encontró la caja.',
@@ -119,19 +86,45 @@ function textoError(codigo) {
   return mapa[codigo] || (codigo ? 'Algo salió mal (' + codigo + ').' : 'Algo salió mal. Intenta de nuevo.');
 }
 
-async function entrar() {
+async function crearOrg() {
+  if (!orgNuevoNombre.value.trim() || !orgEmail.value.trim() || !orgPassword.value) {
+    avisar('Faltan datos', 'Completa nombre, correo y contraseña.');
+    return;
+  }
+  const quiere = await confirmar('¿Crear la organización?', orgNuevoNombre.value.trim());
+  if (!quiere) return;
   cargando.value = true;
   try {
-    const r = await entrarAdmin(email.value.trim(), password.value);
+    const r = await crearOrganizacion(orgNuevoNombre.value.trim(), orgEmail.value.trim(), orgPassword.value);
     if (!r.datos.ok) {
-      falla('No se pudo entrar', textoError(r.datos.error));
+      if (!sesionVencida(r)) falla('No se pudo', textoError(r.datos.error));
       return;
     }
-    guardarSesion(r.datos);
-    await listo('Sesión iniciada', 'Ya puedes administrar tu organización.');
+    await listo('Organización creada', orgNuevoNombre.value.trim() + ' ya existe.');
+    orgNuevoNombre.value = '';
+    orgEmail.value = '';
+    orgPassword.value = '';
   } finally {
     cargando.value = false;
   }
+}
+
+// Super puede promover a super o bajar a admin.
+async function cambiarRol(a, orgId) {
+  const nuevo = a.rol === 'super' ? 'admin' : 'super';
+  const quiere = await confirmar(
+    '¿Cambiar el rol de ' + a.email + '?',
+    nuevo === 'super' ? 'Pasara a ser super-administrador.' : 'Dejara de ser super-administrador.'
+  );
+  if (!quiere) return;
+  const r = await cambiarRolAdmin(orgId || sesion.value.organizacion_id, a.id, nuevo);
+  if (!r.datos.ok) {
+    if (!sesionVencida(r)) {
+      (r.datos.error === 'ultimo_super' ? avisar : falla)('No se pudo', textoError(r.datos.error));
+    }
+    return;
+  }
+  await listo('Rol actualizado', a.email + ' ahora es ' + nuevo + '.');
 }
 
 // ---- Cargas por pestaña ----
@@ -164,6 +157,15 @@ async function cargarUsuarios() {
   }
 }
 
+async function cargarOrganizaciones() {
+  const r = await listarOrganizaciones();
+  if (r.datos.ok) {
+    organizaciones.value = r.datos.organizaciones || [];
+  } else {
+    sesionVencida(r) || avisar('No se pudo cargar', textoError(r.datos.error));
+  }
+}
+
 function cargarPestana(p) {
   if (p === 'admins') cargarAdmins();
   else if (p === 'cajas') cargarCajas();
@@ -172,10 +174,6 @@ function cargarPestana(p) {
 }
 
 function cambiarPestana(p) {
-  if (p === 'orgs' && !esSuper.value) {
-    avisar('Sin permiso', 'Solo un super-admin puede ver todas las organizaciones.');
-    p = 'admins';
-  }
   if (pestana.value === p) return;
   pestana.value = p;
   // La pestaña queda en la URL: el menú enlaza directo a cada sección.
@@ -212,7 +210,7 @@ async function agregar() {
   }
 }
 
-async function cambiarPassword(orgId, a) {
+async function cambiarPassword(a) {
   const nueva = await pedirTexto(
     'Contraseña nueva',
     'Para ' + a.email + '. Déjala en claro con esa persona.',
@@ -223,7 +221,7 @@ async function cambiarPassword(orgId, a) {
     avisar('Contraseña vacía', 'Escribe una contraseña nueva.');
     return;
   }
-  const r = await actualizarAdmin(orgId, a.id, nueva);
+  const r = await actualizarAdmin(sesion.value.organizacion_id, a.id, nueva);
   if (!r.datos.ok) {
     if (!sesionVencida(r)) falla('No se pudo', textoError(r.datos.error));
     return;
@@ -315,101 +313,6 @@ async function quitarUsuario(u) {
   await listo('Usuario eliminado', u.nombre + ' quedó eliminado.');
 }
 
-// ---- Organizaciones (solo super-admin) ----
-async function cargarOrganizaciones() {
-  if (!sesion.value) return;
-  const r = await listarOrganizaciones();
-  if (r.datos.ok) {
-    organizaciones.value = r.datos.organizaciones || [];
-  } else {
-    sesionVencida(r) || avisar('No se pudo cargar', textoError(r.datos.error));
-  }
-}
-
-async function verAdminsOrg(o) {
-  if (orgExpandida.value === o.id) {
-    orgExpandida.value = 0;
-    return;
-  }
-  orgExpandida.value = o.id;
-  nuevoAdminEmail.value = '';
-  nuevoAdminPassword.value = '';
-  const r = await listarAdmins(o.id);
-  if (r.datos.ok) {
-    adminsPorOrg.value = { ...adminsPorOrg.value, [o.id]: r.datos.admins || [] };
-  } else {
-    sesionVencida(r) || avisar('No se pudo cargar', textoError(r.datos.error));
-  }
-}
-
-async function crearOrgSuper() {
-  if (!supOrgNombre.value.trim() || !supOrgEmail.value.trim() || !supOrgPassword.value) {
-    avisar('Faltan datos', 'Completa nombre, correo y contraseña.');
-    return;
-  }
-  const quiere = await confirmar(
-    '¿Crear la organización?',
-    supOrgNombre.value.trim() + ' con ' + supOrgEmail.value.trim() + ' como primer administrador.'
-  );
-  if (!quiere) return;
-  cargando.value = true;
-  try {
-    const r = await crearOrganizacion(supOrgNombre.value.trim(), supOrgEmail.value.trim(), supOrgPassword.value);
-    if (!r.datos.ok) {
-      if (!sesionVencida(r)) falla('No se pudo', textoError(r.datos.error));
-      return;
-    }
-    await listo('Organización creada', '«' + supOrgNombre.value.trim() + '» ya tiene su primer administrador.');
-  } finally {
-    cargando.value = false;
-  }
-}
-
-async function agregarAdminEnOrg(o) {
-  if (!nuevoAdminEmail.value.trim() || !nuevoAdminPassword.value) {
-    avisar('Faltan datos', 'Completa correo y contraseña.');
-    return;
-  }
-  const quiere = await confirmar(
-    '¿Agregar administrador?',
-    nuevoAdminEmail.value.trim() + ' podrá administrar «' + o.nombre + '».'
-  );
-  if (!quiere) return;
-  cargando.value = true;
-  try {
-    const r = await agregarAdmin(o.id, nuevoAdminEmail.value.trim(), nuevoAdminPassword.value);
-    if (!r.datos.ok) {
-      if (!sesionVencida(r)) falla('No se pudo', textoError(r.datos.error));
-      return;
-    }
-    await listo('Administrador agregado', 'Ya puede entrar con su correo.');
-  } finally {
-    cargando.value = false;
-  }
-}
-
-async function toggleRol(o, a) {
-  const nuevo = a.rol === 'super' ? 'admin' : 'super';
-  const quiere = await confirmar(
-    nuevo === 'super' ? '¿Hacer super-admin?' : '¿Quitar el super-admin?',
-    nuevo === 'super'
-      ? a.email + ' podrá ver y administrar TODAS las organizaciones.'
-      : a.email + ' solo podrá administrar «' + o.nombre + '».'
-  );
-  if (!quiere) return;
-  const r = await cambiarRolAdmin(o.id, a.id, nuevo);
-  if (!r.datos.ok) {
-    if (!sesionVencida(r)) {
-      (r.datos.error === 'ultimo_super' ? avisar : falla)('No se pudo', textoError(r.datos.error));
-    }
-    return;
-  }
-  await listo(
-    'Rol actualizado',
-    a.email + ' ahora es ' + (nuevo === 'super' ? 'super-admin' : 'administrador') + '.'
-  );
-}
-
 // ---- Organización ----
 async function guardarNombreOrg() {
   if (!renombrarOrg.value.trim()) {
@@ -454,14 +357,6 @@ async function quitarOrganizacion() {
 
 onMounted(() => {
   cargarSesion();
-  // Entrada directa a #/config/organizaciones sin ser super: se devuelve a Admins.
-  if (pestana.value === 'orgs' && !esSuper.value) {
-    pestana.value = 'admins';
-    if (sesion.value) {
-      avisar('Sin permiso', 'Solo un super-admin puede ver todas las organizaciones.');
-      location.hash = '#/config/admins';
-    }
-  }
   cargarPestana(pestana.value);
 });
 </script>
@@ -474,26 +369,13 @@ onMounted(() => {
       cajas nuevas o agregar más administradores. El acceso es por correo y contraseña.
     </p>
 
-    <!-- Sin sesión: entrar o crear organización -->
-    <div v-if="!sesion" class="fila-tarjetas">
-      <div class="card tarjeta">
-        <div class="card-body">
-          <h5 class="mb-3">Entrar</h5>
-          <label class="form-label">Correo</label>
-          <input v-model="email" type="email" class="form-control mb-2" placeholder="admin@ejemplo.cl" />
-          <label class="form-label">Contraseña</label>
-          <input
-            v-model="password"
-            type="password"
-            class="form-control mb-3"
-            @keyup.enter="entrar"
-          />
-          <button class="btn-acento" :disabled="cargando" @click="entrar">
-            {{ cargando ? 'Entrando…' : 'Entrar' }}
-          </button>
-        </div>
+    <!-- Sin sesión: el login convencional vive en #/ -->
+    <div v-if="!sesion" class="card tarjeta" style="max-width: 420px;">
+      <div class="card-body">
+        <h5 class="mb-2">Configuración</h5>
+        <p class="texto-2 mb-3">Para administrar tu organización primero debes entrar.</p>
+        <a class="btn-acento" href="#/">Entrar</a>
       </div>
-
     </div>
 
     <!-- Con sesión: mi organización -->
@@ -501,12 +383,7 @@ onMounted(() => {
       <div class="card tarjeta mb-3">
         <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div>
-            <h5 class="mb-1">
-              Sesión de administrador
-              <span class="badge-estado" :class="sesion.rol === 'super' ? 'estado-super' : 'estado-admin'">
-                {{ sesion.rol === 'super' ? 'super-admin' : 'admin' }}
-              </span>
-            </h5>
+            <h5 class="mb-1">Sesión de administrador</h5>
             <p class="mb-0 texto-secundario">
               {{ sesion.email }} &middot; {{ orgNombre || ('organización #' + sesion.organizacion_id) }}
             </p>
@@ -520,9 +397,7 @@ onMounted(() => {
         <button :class="{ activo: pestana === 'cajas' }" @click="cambiarPestana('cajas')">Cajas</button>
         <button :class="{ activo: pestana === 'usuarios' }" @click="cambiarPestana('usuarios')">Usuarios</button>
         <button :class="{ activo: pestana === 'org' }" @click="cambiarPestana('org')">Organización</button>
-        <button v-if="esSuper" :class="{ activo: pestana === 'orgs' }" @click="cambiarPestana('orgs')">
-          Organizaciones
-        </button>
+        <button v-if="esSuper()" :class="{ activo: pestana === 'orgs' }" @click="cambiarPestana('orgs')">Organizaciones</button>
       </div>
 
       <!-- Admins -->
@@ -534,13 +409,14 @@ onMounted(() => {
               <li v-for="a in admins" :key="a.id" class="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span>
                   {{ a.email }}
-                  <span class="badge-estado" :class="a.rol === 'super' ? 'estado-super' : 'estado-admin'">
-                    {{ a.rol === 'super' ? 'super-admin' : 'admin' }}
-                  </span>
-                  <span class="texto-secundario">&middot; desde {{ (a.creado_en || '').slice(0, 10) }}</span>
+                  <span v-if="a.rol === 'super'" class="badge bg-primary ms-1">super</span>
+                  <span class="texto-secundario">· desde {{ (a.creado_en || '').slice(0, 10) }}</span>
                 </span>
                 <span class="d-flex gap-1">
-                  <button class="btn btn-sm btn-outline-secondary" @click="cambiarPassword(sesion.organizacion_id, a)">
+                  <button v-if="esSuper()" class="btn btn-sm btn-outline-secondary" @click="cambiarRol(a)">
+                    {{ a.rol === 'super' ? 'Quitar super' : 'Hacer super' }}
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" @click="cambiarPassword(a)">
                     Contraseña
                   </button>
                   <button class="btn btn-sm btn-outline-danger" @click="quitarAdmin(a)">Eliminar</button>
@@ -617,6 +493,46 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Organizaciones (solo super) -->
+      <div v-if="pestana === 'orgs'" class="fila-tarjetas">
+        <div class="card tarjeta">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Organizaciones</h5>
+              <button class="btn btn-sm btn-outline-secondary" @click="cargarOrganizaciones">Actualizar</button>
+            </div>
+            <ul class="lista-simple" v-if="organizaciones.length">
+              <li v-for="o in organizaciones" :key="o.id" class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                <span>
+                  #{{ o.id }} {{ o.nombre }}
+                  <span class="texto-secundario">
+                    · {{ o.admins }} {{ o.admins === 1 ? 'admin' : 'admins' }}
+                    · {{ o.cajas }} {{ o.cajas === 1 ? 'caja' : 'cajas' }}
+                    · {{ (o.creado_en || '').slice(0, 10) }}
+                  </span>
+                </span>
+              </li>
+            </ul>
+            <p v-else class="texto-secundario mb-0">Sin organizaciones registradas.</p>
+          </div>
+        </div>
+
+        <div class="card tarjeta">
+          <div class="card-body">
+            <h5 class="mb-3">Crear organización</h5>
+            <label class="form-label">Nombre de la organización</label>
+            <input v-model="orgNuevoNombre" class="form-control mb-2" placeholder="Ej: Curso 4to Medio B" />
+            <label class="form-label">Correo del primer administrador</label>
+            <input v-model="orgEmail" type="email" class="form-control mb-2" placeholder="admin@ejemplo.cl" />
+            <label class="form-label">Contraseña</label>
+            <input v-model="orgPassword" type="password" class="form-control mb-3" />
+            <button class="btn-acento-outline" :disabled="cargando" @click="crearOrg">
+              Crear organización
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Organización -->
       <div v-if="pestana === 'org'" class="card tarjeta">
         <div class="card-body">
@@ -643,101 +559,6 @@ onMounted(() => {
           </button>
         </div>
       </div>
-
-      <!-- Organizaciones: mantenedor global, solo super-admin -->
-      <template v-if="pestana === 'orgs'">
-        <div class="card tarjeta">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="mb-0">Todas las organizaciones</h5>
-              <button class="btn btn-sm btn-outline-secondary" @click="cargarOrganizaciones">Actualizar</button>
-            </div>
-            <ul class="lista-simple" v-if="organizaciones.length">
-              <li v-for="o in organizaciones" :key="o.id">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
-                  <span>
-                    {{ o.nombre }}
-                    <span class="texto-secundario">
-                      &middot; {{ o.admins }} {{ o.admins === 1 ? 'administrador' : 'administradores' }}
-                      &middot; {{ o.cajas }} {{ o.cajas === 1 ? 'caja' : 'cajas' }}
-                      &middot; desde {{ (o.creado_en || '').slice(0, 10) }}
-                    </span>
-                  </span>
-                  <button class="btn btn-sm btn-outline-secondary" @click="verAdminsOrg(o)">
-                    {{ orgExpandida === o.id ? 'Ocultar admins' : 'Ver admins' }}
-                  </button>
-                </div>
-
-                <div v-if="orgExpandida === o.id" class="mt-2">
-                  <ul class="lista-simple" v-if="(adminsPorOrg[o.id] || []).length">
-                    <li
-                      v-for="a in adminsPorOrg[o.id]"
-                      :key="a.id"
-                      class="d-flex justify-content-between align-items-center flex-wrap gap-1"
-                    >
-                      <span>
-                        {{ a.email }}
-                        <span class="badge-estado" :class="a.rol === 'super' ? 'estado-super' : 'estado-admin'">
-                          {{ a.rol === 'super' ? 'super-admin' : 'admin' }}
-                        </span>
-                      </span>
-                      <span class="d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-secondary" @click="cambiarPassword(o.id, a)">
-                          Contraseña
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" @click="toggleRol(o, a)">
-                          {{ a.rol === 'super' ? 'Quitar super' : 'Hacer super' }}
-                        </button>
-                      </span>
-                    </li>
-                  </ul>
-                  <p v-else class="texto-secundario mb-2">Cargando administradores&hellip;</p>
-
-                  <div class="row g-2 align-items-end mt-2">
-                    <div class="col-md-5">
-                      <label class="form-label">Correo del administrador nuevo</label>
-                      <input v-model="nuevoAdminEmail" type="email" class="form-control" placeholder="nuevo@ejemplo.cl" />
-                    </div>
-                    <div class="col-md-4">
-                      <label class="form-label">Contraseña</label>
-                      <input v-model="nuevoAdminPassword" type="password" class="form-control" />
-                    </div>
-                    <div class="col-md-3">
-                      <button class="btn-acento-outline w-100" :disabled="cargando" @click="agregarAdminEnOrg(o)">
-                        Agregar admin
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            </ul>
-            <p v-else class="texto-secundario mb-0">Sin organizaciones registradas.</p>
-          </div>
-        </div>
-
-        <div class="card tarjeta">
-          <div class="card-body">
-            <h5 class="mb-3">Crear organización</h5>
-            <div class="row g-2 align-items-end">
-              <div class="col-md-4">
-                <label class="form-label">Nombre</label>
-                <input v-model="supOrgNombre" class="form-control" placeholder="Ej: Curso 4to Medio B" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Correo del primer administrador</label>
-                <input v-model="supOrgEmail" type="email" class="form-control" placeholder="admin@ejemplo.cl" />
-              </div>
-              <div class="col-md-2">
-                <label class="form-label">Contraseña</label>
-                <input v-model="supOrgPassword" type="password" class="form-control" />
-              </div>
-              <div class="col-md-2">
-                <button class="btn-acento w-100" :disabled="cargando" @click="crearOrgSuper">Crear</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
     </template>
 
   </div>

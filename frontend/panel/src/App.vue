@@ -1,16 +1,19 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { despertar } from './api';
-import Inicio from './Inicio.vue';
-import Caja from './Caja.vue';
-import Admin from './Admin.vue';
 import Acceso from './Acceso.vue';
+import Registro from './Registro.vue';
+import Recuperar from './Recuperar.vue';
+import Abrir from './Abrir.vue';
+import Crear from './Crear.vue';
+import Caja from './Caja.vue';
 import MisCajas from './MisCajas.vue';
+import Admin from './Admin.vue';
 
-// Ruteo mínimo por hash: #/ -> inicio, #/caja/ID -> detalle,
-// #/config/SECCION -> configuración (admins, cajas, usuarios, organizacion).
+// Ruteo mínimo por hash. Cada vista vive sola: login, registro,
+// recuperar clave, abrir, crear, mis cajas, detalle de caja y config.
 // Sin vue-router.
-const vista = ref('inicio');
+const vista = ref('acceso');
 const cajaId = ref(0);
 const seccionConfig = ref('admins');
 const despertando = ref(true);
@@ -27,12 +30,21 @@ function parsearHash() {
     const s = location.hash.match(/^#\/config\/(\w+)/);
     seccionConfig.value = s ? s[1] : 'admins';
     vista.value = 'config';
-  } else if (location.hash.startsWith('#/acceso')) {
-    vista.value = 'acceso';
+  } else if (location.hash.startsWith('#/registro')) {
+    vista.value = 'registro';
+  } else if (location.hash.startsWith('#/recuperar')) {
+    vista.value = 'recuperar';
+  } else if (location.hash.startsWith('#/abrir')) {
+    vista.value = 'abrir';
+  } else if (location.hash.startsWith('#/crear')) {
+    vista.value = 'crear';
   } else if (location.hash.startsWith('#/mis-cajas')) {
     vista.value = 'miscajas';
+  } else if (location.hash.startsWith('#/acceso')) {
+    // Dirección antigua del acceso: el login convencional es la portada.
+    location.hash = '#/';
   } else {
-    vista.value = 'inicio';
+    vista.value = 'acceso';
   }
 }
 
@@ -49,9 +61,12 @@ onMounted(() => {
   <div v-if="despertando" class="aviso-despertar">
     Conectando con el servicio&hellip; la primera carga puede tardar ~1 minuto.
   </div>
-  <Inicio v-if="vista === 'inicio'" :despertando="despertando" />
-  <Admin v-else-if="vista === 'config'" :seccion="seccionConfig" />
-  <Acceso v-else-if="vista === 'acceso'" />
+  <Acceso v-if="vista === 'acceso'" />
+  <Registro v-else-if="vista === 'registro'" />
+  <Recuperar v-else-if="vista === 'recuperar'" />
+  <Abrir v-else-if="vista === 'abrir'" :despertando="despertando" />
+  <Crear v-else-if="vista === 'crear'" :despertando="despertando" />
   <MisCajas v-else-if="vista === 'miscajas'" />
+  <Admin v-else-if="vista === 'config'" :seccion="seccionConfig" />
   <Caja v-else :id="cajaId" :key="cajaId" :despertando="despertando" />
 </template>

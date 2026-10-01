@@ -65,7 +65,7 @@ onMounted(async () => {
     <div v-else-if="!sesion" class="card tarjeta">
       <div class="card-body text-center py-5">
         <p class="texto-2 mb-3">Para ver tus cajas primero tienes que entrar.</p>
-        <a class="btn-acento" href="#/acceso">Ir a Acceso</a>
+        <a class="btn-acento" href="#/">Ir a entrar</a>
       </div>
     </div>
 

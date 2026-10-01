@@ -116,7 +116,7 @@ final class Correo
                 Entra con tu correo, revisa las cajas donde eres miembro y aprueba
                 los gastos pendientes con un clic.
             </p>
-            " . self::boton('Entrar a Cosigna', '/#/acceso');
+            " . self::boton('Entrar a Cosigna', '/#/');
 
         return self::enviar($para, 'Bienvenido a Cosigna', $cuerpo);
     }
@@ -133,7 +133,7 @@ final class Correo
             <p style='margin:0 0 16px;color:#6b7280;font-size:13px'>
                 Vence en 15 minutos. Si no lo pediste tú, ignora este correo.
             </p>
-            " . self::boton('Cambiar mi clave', '/#/acceso');
+            " . self::boton('Cambiar mi clave', '/#/recuperar');
 
         return self::enviar($para, 'Tu código de Cosigna', $cuerpo);
     }

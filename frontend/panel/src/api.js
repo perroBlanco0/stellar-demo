@@ -51,8 +51,11 @@ export const crearOrganizacion = (nombre, email, password) =>
 export const agregarAdmin = (orgId, email, password) =>
   req('POST', `/organizaciones/${orgId}/admins`, { email, password });
 export const listarAdmins = (orgId) => req('GET', `/organizaciones/${orgId}/admins`);
+export const listarOrganizaciones = () => req('GET', '/organizaciones');
 export const actualizarAdmin = (orgId, adminId, password) =>
   req('PUT', `/organizaciones/${orgId}/admins/${adminId}`, { password });
+export const cambiarRolAdmin = (orgId, adminId, rol) =>
+  req('PUT', `/organizaciones/${orgId}/admins/${adminId}`, { rol });
 export const eliminarAdmin = (orgId, adminId) =>
   req('DELETE', `/organizaciones/${orgId}/admins/${adminId}`);
 

@@ -4,28 +4,18 @@ import { crearCaja } from './api';
 import { generarClaves, activarCuenta, prepararCaja } from './stellar';
 import { confirmar, avisar, falla } from './avisos';
 
+// Crear caja nueva. Vista separada: antes vivía mezclada con el inicio.
 const props = defineProps({ despertando: Boolean });
 
-const idAbrir = ref('');
 const nombre = ref('');
 const curso = ref('');
 const umbral = ref(2);
 const creando = ref(false);
-const error = ref('');
 const aviso = ref('');
 const creada = ref(null); // { id, secreta, activada }
 
 function irACaja(id) {
   location.hash = '#/caja/' + id;
-}
-
-function abrir() {
-  const id = parseInt(idAbrir.value, 10);
-  if (!id || id < 1) {
-    avisar('Número inválido', 'Ingresa un número de caja válido.');
-    return;
-  }
-  irACaja(id);
 }
 
 function registrarReciente(id, nombreCaja) {
@@ -39,7 +29,6 @@ function registrarReciente(id, nombreCaja) {
 }
 
 async function crear() {
-  error.value = '';
   aviso.value = '';
   if (!nombre.value.trim()) {
     avisar('Falta el nombre', 'Ponle un nombre a la caja.');
@@ -60,7 +49,8 @@ async function crear() {
     const r = await crearCaja(nombre.value.trim(), curso.value.trim(), claves.publica, umbral.value);
     if (!r.datos.ok) {
       if (r.estado === 401) {
-        avisar('Falta entrar', 'Para crear cajas hay que entrar como administrador. Ve a Administración.');
+        avisar('Falta entrar', 'Para crear cajas hay que entrar como administrador.');
+        location.hash = '#/';
       } else {
         falla('No se pudo crear', 'No se pudo crear la caja (' + (r.datos.error || 'error') + ').');
       }
@@ -95,14 +85,8 @@ function copiar(texto) {
 
 <template>
   <div class="pagina">
-    <div class="hero">
-      <img class="hero-logo" src="/logo.png" alt="Cosigna" />
-      <h1 class="hero-nombre">Cosigna</h1>
-      <p class="hero-tagline">Tesorerías colectivas con aprobación compartida</p>
-      <p class="hero-linea">
-        Cajas de dinero compartidas donde cada gasto necesita la aprobación de todos.
-      </p>
-    </div>
+    <h1 class="titulo">Crear caja nueva</h1>
+    <p class="subtitulo">Define el nombre y cuántas aprobaciones pide cada gasto.</p>
 
     <div v-if="creada" class="card tarjeta">
       <div class="card-body">
@@ -121,45 +105,22 @@ function copiar(texto) {
       </div>
     </div>
 
-    <div v-else class="fila-tarjetas">
-      <div class="card tarjeta">
-        <div class="card-body">
-          <h5 class="mb-3">Abrir una caja</h5>
-          <label class="form-label">Número de caja</label>
-          <input
-            v-model="idAbrir"
-            type="number"
-            min="1"
-            class="form-control mb-3"
-            placeholder="Ej: 2"
-            @keyup.enter="abrir"
-          />
-          <button class="btn-acento" :disabled="despertando" @click="abrir">Abrir</button>
-        </div>
-      </div>
-
-      <div class="card tarjeta">
-        <div class="card-body">
-          <h5 class="mb-3">Crear caja nueva</h5>
-          <label class="form-label">Nombre</label>
-          <input v-model="nombre" class="form-control mb-2" placeholder="Ej: Caja 4to Medio B" />
-          <label class="form-label">Grupo o curso (opcional)</label>
-          <input v-model="curso" class="form-control mb-2" placeholder="Ej: 4to Medio B" />
-          <label class="form-label">Aprobaciones necesarias para cada gasto</label>
-          <input v-model.number="umbral" type="number" min="1" class="form-control mb-3" />
-          <button class="btn-acento" :disabled="creando || despertando" @click="crear">
-            {{ creando ? 'Creando…' : 'Crear caja' }}
-          </button>
-        </div>
+    <div v-else class="card tarjeta" style="max-width: 420px;">
+      <div class="card-body">
+        <label class="form-label">Nombre</label>
+        <input v-model="nombre" class="form-control mb-2" placeholder="Ej: Caja 4to Medio B" />
+        <label class="form-label">Grupo o curso (opcional)</label>
+        <input v-model="curso" class="form-control mb-2" placeholder="Ej: 4to Medio B" />
+        <label class="form-label">Aprobaciones necesarias para cada gasto</label>
+        <input v-model.number="umbral" type="number" min="1" class="form-control mb-3" />
+        <button class="btn-acento" :disabled="creando || despertando" @click="crear">
+          {{ creando ? 'Creando…' : 'Crear caja' }}
+        </button>
       </div>
     </div>
 
-    <p v-if="error" class="texto-error mt-3">{{ error }}</p>
-
-    <p class="mt-4 mb-0">
-      <a href="#/acceso" class="texto-secundario">Acceso</a>
-      <span class="texto-secundario"> &middot; </span>
-      <a href="#/config" class="texto-secundario">Configuraci&oacute;n</a>
+    <p class="mt-3 mb-0">
+      <a href="#/" class="texto-secundario">Volver a entrar</a>
     </p>
   </div>
 </template>
