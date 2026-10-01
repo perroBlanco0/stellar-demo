@@ -76,8 +76,10 @@ function textoError(codigo) {
     email_ya_registrado: 'Ese correo ya está registrado.',
     email_duplicado: 'Ese correo ya está registrado.',
     unauthorized: 'La sesión venció. Entra de nuevo.',
-    forbidden: 'No perteneces a esa organización.',
+    forbidden: 'No tienes permiso para esto.',
     ultimo_admin: 'No puedes eliminar al último administrador de la organización.',
+    ultimo_super: 'No puedes quitar el super al único super-administrador.',
+    rol_invalido: 'Ese rol no existe.',
     organizacion_tiene_cajas: 'La organización todavía tiene cajas: elimínalas primero desde la sección Cajas.',
     caja_not_found: 'No se encontró la caja.',
     usuario_not_found: 'No se encontró el usuario.',
@@ -101,6 +103,7 @@ async function crearOrg() {
       return;
     }
     await listo('Organización creada', orgNuevoNombre.value.trim() + ' ya existe.');
+    cargarOrganizaciones();
     orgNuevoNombre.value = '';
     orgEmail.value = '';
     orgPassword.value = '';
@@ -404,7 +407,10 @@ onMounted(() => {
       <div v-if="pestana === 'admins'" class="fila-tarjetas">
         <div class="card tarjeta">
           <div class="card-body">
-            <h5 class="mb-3">Administradores de mi organización</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0">Administradores de mi organización</h5>
+              <button class="btn btn-sm btn-outline-secondary" @click="cargarAdmins">Actualizar</button>
+            </div>
             <ul class="lista-simple" v-if="admins.length">
               <li v-for="a in admins" :key="a.id" class="d-flex justify-content-between align-items-center flex-wrap gap-1">
                 <span>
@@ -494,7 +500,12 @@ onMounted(() => {
       </div>
 
       <!-- Organizaciones (solo super) -->
-      <div v-if="pestana === 'orgs'" class="fila-tarjetas">
+      <div v-if="pestana === 'orgs' && !esSuper()" class="card tarjeta">
+        <div class="card-body">
+          <p class="texto-2 mb-0">Esta sección es solo para el super-administrador.</p>
+        </div>
+      </div>
+      <div v-else-if="pestana === 'orgs'" class="fila-tarjetas">
         <div class="card tarjeta">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">

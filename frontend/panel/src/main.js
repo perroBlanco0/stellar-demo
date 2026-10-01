@@ -52,14 +52,16 @@ function pintarRecientes() {
   if (admin) {
     $('#sidebar-titulo-cajas').text('Cajas de la organización');
     listarCajasOrganizacion(admin.organizacion_id).then((r) => {
+      // Ante un fallo NO caemos al historial local: eso mostraba cajas de otras
+      // organizaciones bajo una sesión activa. Lista vacía es más honesto.
       if (r.datos.ok) pintarLista(r.datos.cajas || []);
-      else pintarLocal();
+      else pintarLista([]);
     });
   } else if (usuario) {
     $('#sidebar-titulo-cajas').text('Mis cajas');
     misCajas().then((r) => {
       if (r.datos.ok) pintarLista(r.datos.cajas || []);
-      else pintarLocal();
+      else pintarLista([]);
     });
   } else {
     pintarLocal();

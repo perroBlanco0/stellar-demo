@@ -40,6 +40,9 @@ async function entrar() {
           rol: rAdmin.datos.rol,
         })
       );
+      if (rAdmin.datos.organizacion_nombre) {
+        localStorage.setItem('admin_org_nombre', rAdmin.datos.organizacion_nombre);
+      }
       await listo('Sesión iniciada', 'Ya puedes administrar tu organización.', false);
       location.hash = '#/config';
       return;

@@ -61,11 +61,19 @@ final class AdminRoutes
                 'organizacion_id' => $admin['organizacion_id'],
             ]);
 
+            $orgNombre = '';
+            if (!empty($admin['organizacion_id'])) {
+                $stmt = $pdo->prepare('SELECT nombre FROM organizaciones WHERE id = ?');
+                $stmt->execute([$admin['organizacion_id']]);
+                $orgNombre = (string) ($stmt->fetchColumn() ?: '');
+            }
+
             $response->getBody()->write(json_encode([
                 'ok' => true,
                 'token' => $token,
                 'email' => $admin['email'],
                 'organizacion_id' => $admin['organizacion_id'],
+                'organizacion_nombre' => $orgNombre,
                 'rol' => $admin['rol'] ?? 'admin',
             ]));
 
