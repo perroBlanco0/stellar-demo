@@ -95,7 +95,11 @@ function copiar(texto) {
         <p v-if="creada.activada" class="texto-ok mb-2">Activada y lista para usar.</p>
         <p v-else class="texto-aviso mb-2">{{ aviso }}</p>
         <div class="clave-bloque">
-          <div class="clave-etiqueta">Clave maestra de la caja (guárdala, solo se muestra una vez)</div>
+          <div class="clave-etiqueta">
+            Clave maestra de la caja: es la llave para administrarla (agregar
+            miembros, configurarla). Se muestra una sola vez — copiala y
+            guárdala en un lugar seguro. Si se pierde, nadie puede administrar la caja.
+          </div>
           <div class="clave-mono">{{ creada.secreta }}</div>
           <button class="btn btn-sm btn-outline-secondary mt-2" @click="copiar(creada.secreta)">
             Copiar clave

@@ -86,6 +86,12 @@ function cortar(clave) {
   return clave && clave.length > 14 ? clave.slice(0, 6) + '…' + clave.slice(-6) : clave;
 }
 
+// Nombre del miembro si la clave pertenece a uno; si no, la clave acortada.
+function nombreDeClave(pk) {
+  const m = (caja.value?.members || []).find((x) => x.public_key === pk);
+  return m ? m.nombre + ' (' + cortar(pk) + ')' : cortar(pk);
+}
+
 function fechaBonita(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -563,6 +569,10 @@ onMounted(async () => {
       <p class="subtitulo">
         {{ caja.curso || 'Sin grupo' }} &middot; cada gasto necesita
         <strong>{{ caja.umbral }}</strong> {{ caja.umbral === 1 ? 'aprobación' : 'aprobaciones' }}
+        &middot;
+        <a :href="'https://stellar.expert/explorer/testnet/account/' + caja.public_key" target="_blank" rel="noopener">
+          verifícala en la red ↗
+        </a>
       </p>
 
       <p v-if="error" class="texto-error">{{ error }}</p>
@@ -615,7 +625,7 @@ onMounted(async () => {
           <div v-for="p in propuestas" :key="p.id" class="propuesta">
             <div class="d-flex justify-content-between flex-wrap gap-2">
               <div>
-                <div class="propuesta-monto">{{ p.monto }} a {{ cortar(p.destino) }}</div>
+                <div class="propuesta-monto">{{ p.monto }} a {{ nombreDeClave(p.destino) }}</div>
                 <div class="texto-2">{{ p.motivo || 'Sin motivo' }}</div>
               </div>
               <div class="text-end">

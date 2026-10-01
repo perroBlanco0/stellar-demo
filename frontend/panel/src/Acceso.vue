@@ -94,5 +94,19 @@ async function entrar() {
     <p class="mt-3 mb-0 text-center">
       <a href="#/registro" class="texto-secundario">Crear una cuenta</a>
     </p>
+
+    <div class="card tarjeta mt-4" style="max-width: 420px; margin-left: auto; margin-right: auto;">
+      <div class="card-body">
+        <h6 class="mb-2">¿Qué es Cosigna?</h6>
+        <p class="texto-secundario mb-2" style="font-size: 0.92rem;">
+          Una caja compartida para tu curso, club o junta: nadie gasta la plata
+          común sin las aprobaciones que ustedes decidan. Todo queda registrado
+          y verificable en la red.
+        </p>
+        <a href="#/caja/4" class="texto-secundario" style="font-size: 0.92rem;">
+          Ver una caja real de ejemplo →
+        </a>
+      </div>
+    </div>
   </div>
 </template>
