@@ -1,6 +1,8 @@
 <div align="center">
 
-# ✦ Cosigna
+<img src="frontend/panel/public/logo.png" alt="Logo de Cosigna" width="140">
+
+# Cosigna
 
 ### Tesorerías colectivas donde ninguna persona decide sola
 
